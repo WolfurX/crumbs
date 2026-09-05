@@ -78,7 +78,7 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
         if (!info) throw new Error('No account at that address on Cookie Chain.')
         if (!info.owner.equals(TOKEN_PROGRAM) && !info.owner.equals(TOKEN_2022_PROGRAM)) throw new Error('That address is not a token mint.')
         const m = await getMint(connection, pk, 'confirmed', info.owner)
-        token = { mint, symbol: shortAddr(mint, 4, 3), name: 'Unlisted token', decimals: m.decimals }
+        token = mint === CRUMB_MINT.toBase58() ? { mint, symbol: 'CRUMB', name: 'Crumb, proof of play', decimals: m.decimals } : { mint, symbol: shortAddr(mint, 4, 3), name: 'Unlisted token', decimals: m.decimals }
       }
       setBusy('Fetching holders…')
       const holders = await fetchHolders(mint, (n) => setBusy(`Fetching holders… ${fmtInt(n)} accounts`), ac.signal)
