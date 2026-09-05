@@ -5,6 +5,7 @@ import { Airdrop } from './components/Airdrop'
 import { Cleanup } from './components/Cleanup'
 import { StatStrip } from './components/StatStrip'
 import { Toaster } from './components/Toast'
+import { Roadmap } from './components/Roadmap'
 import { useInstallPrompt } from './lib/install'
 import { IconAperture, IconBrush, IconDownload, IconParachute } from './icons'
 
@@ -63,6 +64,8 @@ export default function App() {
         {tab === 'airdrop' && <Airdrop snapshot={snapshot} onNeedSnapshot={() => setTab('snapshot')} />}
         {tab === 'cleanup' && <Cleanup />}
       </div>
+
+      <Roadmap />
 
       <footer>
         <span>Utilities for Cookie Chain communities. No fees, no backend, your wallet signs every transaction.</span>

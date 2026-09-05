@@ -51,11 +51,11 @@ Deployed from `main` to Vercel (production) and, as a mirror, to GitHub Pages by
 
 Crumbs is meant to be the toolbox every Cookie Chain community reaches for. Next in line:
 
-- Peer-to-peer token swaps by link: both sides sign one transaction, no escrow program, no counterparty risk.
-- `.cook` names wherever an address is accepted.
-- Holder snapshots of NFT collections.
+- Swap by link (in progress): trade any two tokens wallet to wallet, both sides sign one transaction, no escrow, no counterparty risk.
+- `.cook` names wherever Crumbs asks for an address.
+- Holder snapshots of NFT collections, ready for holder-only airdrops.
 
-Suggestions and bug reports go in the issues.
+The site shows the same list. Suggestions go in the issues or as replies to the launch thread.
 
 ## Credits
 

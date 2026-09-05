@@ -220,3 +220,13 @@ h1, h2, .brand, .tile .value { font-family: var(--display); }
 .toast.leaving { animation: leave 0.22s var(--ease) both; }
 @keyframes leave { to { opacity: 0; transform: translateY(6px); } }
 @media (prefers-reduced-motion: reduce) { .toast, .toast.leaving, .conc-bar span { animation: none; transition: none; } }
+
+/* roadmap */
+.roadmap { margin-top: 2.5rem; padding-top: 1.2rem; border-top: 1px solid var(--line); }
+.roadmap h2 { font-size: 1rem; }
+.roadmap > .row > a { color: var(--ink-2); }
+.roadmap-list { list-style: none; margin: 0.6rem 0 0; padding: 0; display: grid; }
+.roadmap-list li { display: grid; grid-template-columns: 1.4rem 1fr; gap: 0.8rem; padding: 0.8rem 0; border-bottom: 1px solid var(--line); align-items: start; }
+.roadmap-list li:last-child { border-bottom: 0; }
+.roadmap-list li > svg { font-size: 1.15rem; color: var(--accent); margin-top: 0.15rem; }
+.roadmap-list p { margin-top: 0.15rem; max-width: 70ch; }
