@@ -16,4 +16,6 @@ pub enum EmissionError {
     NameTooLong,
     #[msg("arithmetic overflow")]
     Overflow,
+    #[msg("disable the distributor before removing it")]
+    DistributorEnabled,
 }

@@ -70,7 +70,7 @@ export default function App() {
 
       <div className="panel" key={tab}>
         {tab === 'snapshot' && <Snapshot result={snapshot} onResult={setSnapshot} onAirdrop={() => setTab('airdrop')} presetMint={presetMint} onPresetUsed={() => setPresetMint(null)} />}
-        {tab === 'airdrop' && <Airdrop snapshot={snapshot} onNeedSnapshot={() => setTab('snapshot')} />}
+        {tab === 'airdrop' && <Airdrop snapshot={snapshot} onNeedSnapshot={() => setTab('snapshot')} onSnapshot={setSnapshot} />}
         {tab === 'cleanup' && <Cleanup />}
         {tab === 'clicker' && <Clicker onSnapshot={snapshotOf} />}
         {tab === 'crumb' && <Crumb onSnapshot={snapshotOf} />}

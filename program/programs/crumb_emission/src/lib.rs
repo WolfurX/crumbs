@@ -99,6 +99,14 @@ pub mod crumb_emission {
         Ok(())
     }
 
+    /// Remove a disabled distributor's record; its rent returns to the authority.
+    pub fn remove_distributor(ctx: Context<RemoveDistributor>) -> Result<()> {
+        require!(!ctx.accounts.distributor.enabled, EmissionError::DistributorEnabled);
+        let e = &mut ctx.accounts.emission;
+        e.distributors = e.distributors.saturating_sub(1);
+        Ok(())
+    }
+
     pub fn set_authority(ctx: Context<SetEmissionAuthority>, new_authority: Pubkey) -> Result<()> {
         ctx.accounts.emission.authority = new_authority;
         Ok(())
@@ -142,6 +150,16 @@ pub struct MintCrumb<'info> {
     #[account(mut, token::mint = mint)]
     pub recipient: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct RemoveDistributor<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    #[account(mut, seeds = [EMISSION_SEED], bump = emission.bump, has_one = authority)]
+    pub emission: Account<'info, Emission>,
+    #[account(mut, close = authority, has_one = emission)]
+    pub distributor: Account<'info, Distributor>,
 }
 
 #[derive(Accounts)]

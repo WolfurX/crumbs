@@ -170,6 +170,61 @@
       ]
     },
     {
+      "name": "remove_distributor",
+      "docs": [
+        "Remove a disabled distributor's record; its rent returns to the authority."
+      ],
+      "discriminator": [
+        248,
+        221,
+        249,
+        213,
+        164,
+        125,
+        147,
+        128
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "emission"
+          ]
+        },
+        {
+          "name": "emission",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "distributor"
+          ]
+        },
+        {
+          "name": "distributor",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "set_authority",
       "discriminator": [
         133,
@@ -378,6 +433,11 @@
       "code": 6006,
       "name": "Overflow",
       "msg": "arithmetic overflow"
+    },
+    {
+      "code": 6007,
+      "name": "DistributorEnabled",
+      "msg": "disable the distributor before removing it"
     }
   ],
   "types": [

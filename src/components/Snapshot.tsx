@@ -11,7 +11,8 @@ import { renderShareCard } from '../lib/sharecard'
 import { HolderChart } from './HolderChart'
 import { ArtSnapshot } from './Art'
 import { toast } from './Toast'
-import { IconAperture, IconCheck, IconChevronDown, IconCopy, IconDownload, IconExternalLink, IconParachute, IconSearch, IconShieldCheck } from '../icons'
+import { IconAperture, IconCheck, IconChevronDown, IconCoins, IconCopy, IconDownload, IconExternalLink, IconParachute, IconSearch, IconShieldCheck } from '../icons'
+import { CRUMB_MINT } from '../game/constants'
 
 export interface SnapshotResult {
   token: TokenInfo
@@ -217,6 +218,9 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
           <div className="row" style={{ marginTop: '0.75rem' }}>
             <button className="btn primary" disabled={!!busy || !isPubkey(query)} onClick={() => take(query.trim())}>
               <IconAperture /> Take snapshot
+            </button>
+            <button className="btn" disabled={!!busy} onClick={() => take(CRUMB_MINT.toBase58())} title="Every wallet holding CRUMB right now">
+              <IconCoins /> CRUMB holders
             </button>
             {busy && <span className="muted">{busy}</span>}
             {error && <span className="err">{error}</span>}

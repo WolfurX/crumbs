@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import type { SnapshotResult } from './Snapshot'
+import { fetchHolders } from '../lib/das'
+import { CRUMB_MINT } from '../game/constants'
 import { BatchList } from './BatchList'
 import { ArtAirdrop } from './Art'
 import { toast } from './Toast'
@@ -10,11 +12,12 @@ import { loadRegistry, type TokenInfo } from '../lib/tokens'
 import { runBatches, type Batch } from '../lib/txs'
 import { COOK_DECIMALS, COOK_MINT } from '../lib/chain'
 import { fmtAmount, fmtInt, uiToRaw } from '../lib/format'
-import { IconArrowRight, IconCheck, IconDownload, IconParachute, IconRefresh } from '../icons'
+import { IconArrowRight, IconCheck, IconCoins, IconDownload, IconParachute, IconRefresh } from '../icons'
 
 interface Props {
   snapshot: SnapshotResult | null
   onNeedSnapshot: () => void
+  onSnapshot: (r: SnapshotResult) => void
 }
 
 type Source = 'snapshot' | 'list'
@@ -27,7 +30,7 @@ const STEPS: { n: Step; label: string }[] = [
   { n: 3, label: 'Review and send' },
 ]
 
-export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
+export function Airdrop({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
   const { connection } = useConnection()
   const wallet = useWallet()
   const [step, setStep] = useState<Step>(1)
@@ -81,6 +84,25 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
   }, [snapshot, minUi, skipProgram, skipSelf, topN, wallet.publicKey])
 
   const listCount = useMemo(() => list.split(/\r?\n/).filter((l) => l.trim()).length, [list])
+
+  /** Snapshot every CRUMB holder and make them the recipients, one click. */
+  async function crumbHolders() {
+    setBusy('Fetching CRUMB holders…')
+    setError(null)
+    try {
+      const mint = CRUMB_MINT.toBase58()
+      const holders = await fetchHolders(mint, (n) => setBusy(`Fetching CRUMB holders… ${fmtInt(n)} accounts`))
+      const total = holders.reduce((n, h) => n + h.amount, 0n)
+      const token = registry.get(mint) ?? { mint, symbol: 'CRUMB', name: 'Crumb', decimals: 6 }
+      onSnapshot({ token: { ...token, symbol: 'CRUMB' }, holders, total, takenAt: Date.now() })
+      setSource('snapshot')
+      if (!holders.length) setError('Nobody holds CRUMB yet. Claims from the clicker settle after each UTC day.')
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(null)
+    }
+  }
   const recipientCount = source === 'snapshot' ? snapshotRows.length : listCount
 
   async function makePlan() {
@@ -205,9 +227,13 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
         <section className="card">
           <h2>Who receives it</h2>
           <p className="lead">A holder snapshot with filters, or a list you paste.</p>
-          <div className="seg" role="group" aria-label="Recipients">
-            <button aria-pressed={source === 'snapshot'} onClick={() => setSource('snapshot')}>Snapshot holders</button>
-            <button aria-pressed={source === 'list'} onClick={() => setSource('list')}>Pasted list</button>
+          <div className="row">
+            <div className="seg" role="group" aria-label="Recipients">
+              <button aria-pressed={source === 'snapshot'} onClick={() => setSource('snapshot')}>Snapshot holders</button>
+              <button aria-pressed={source === 'list'} onClick={() => setSource('list')}>Pasted list</button>
+            </div>
+            <button className="btn" disabled={!!busy} onClick={crumbHolders} title="Snapshot every CRUMB holder and airdrop to them"><IconCoins /> CRUMB holders</button>
+            {busy && <span className="muted small">{busy}</span>}
           </div>
 
           {source === 'snapshot' ? (

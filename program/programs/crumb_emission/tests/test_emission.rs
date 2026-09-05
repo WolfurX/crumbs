@@ -123,6 +123,18 @@ fn distributor_mints_within_cap_and_weights_are_bounded() {
     assert!(send(&mut svm, &[mint_ix(CRUMB)], &game, &[&game]).is_err());
     set(&mut svm, 10_000, true).unwrap();
     assert!(send(&mut svm, &[mint_ix(MAX)], &game, &[&game]).is_err(), "over the remaining supply");
+
+    // removing an enabled distributor fails; disabled, it closes and the count drops
+    let remove = |svm: &mut LiteSVM| {
+        let ix = Instruction::new_with_bytes(crumb_emission::id(), &crumb_emission::instruction::RemoveDistributor {}.data(),
+            crumb_emission::accounts::RemoveDistributor { authority: admin.pubkey(), emission, distributor }.to_account_metas(None));
+        send(svm, &[ix], &admin, &[&admin])
+    };
+    assert!(remove(&mut svm).is_err(), "enabled distributor must not be removable");
+    set(&mut svm, 10_000, false).unwrap();
+    remove(&mut svm).unwrap();
+    assert!(svm.get_account(&distributor).map(|a| a.lamports == 0).unwrap_or(true));
+    assert_eq!(emission_state(&svm, &emission).distributors, 0);
 }
 
 #[test]
