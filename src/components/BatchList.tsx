@@ -23,7 +23,7 @@ export function BatchList({ batches, unit }: { batches: Batch[]; unit: string })
             <span>
               <span className={`dot${b.status === 'confirmed' ? ' ok' : b.status === 'failed' || b.status === 'expired' ? ' bad' : live ? ' live' : ''}`} />
               {LABEL[b.status]}
-              <span className="muted"> · {b.items.length} {unit}</span>
+              <span className="muted"> · {b.items.length} {b.items.length === 1 ? unit.replace(/s$/, '') : unit}</span>
               {b.error && <div className="err small">{b.error}</div>}
             </span>
             <span className="right">

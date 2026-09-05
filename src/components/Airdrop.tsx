@@ -248,7 +248,7 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
               </button>
             )}
             {canRetry && !running && <button className="btn primary" onClick={() => send(true)}>Retry failed</button>}
-            {done && <span className="ink2">Done. {fmtInt(sentRecipients)} wallets received {plan.asset.symbol}.</span>}
+            {done && <span className="ink2">Done. {fmtInt(sentRecipients)} wallet{sentRecipients === 1 ? '' : 's'} received {plan.asset.symbol}.</span>}
             {batches.some((b) => b.signature) && <button className="btn" onClick={exportResults}>Export results</button>}
           </div>
           <BatchList batches={batches} unit="recipients" />
