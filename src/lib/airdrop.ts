@@ -6,6 +6,7 @@ import {
   getMint,
 } from '@solana/spl-token'
 import { COOK_MINT, TOKEN_2022_PROGRAM, TOKEN_ACCOUNT_RENT, TOKEN_PROGRAM } from './chain'
+import { shortAddr } from './format'
 import { packBatches, type Batch } from './txs'
 
 export type Asset =
@@ -39,7 +40,7 @@ export async function resolveAsset(connection: Connection, mint: string, symbol?
   if (!info) throw new Error('Mint not found on Cookie Chain')
   const programId = info.owner.equals(TOKEN_2022_PROGRAM) ? TOKEN_2022_PROGRAM : TOKEN_PROGRAM
   const m = await getMint(connection, pk, 'confirmed', programId)
-  return { kind: 'token', mint: pk, decimals: m.decimals, programId, symbol: symbol ?? '' }
+  return { kind: 'token', mint: pk, decimals: m.decimals, programId, symbol: symbol || shortAddr(mint, 4, 4) }
 }
 
 const UNITS_TRANSFER = 8_000

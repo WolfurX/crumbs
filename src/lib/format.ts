@@ -27,7 +27,10 @@ export function fmtAmount(raw: bigint, decimals: number, compact = false): strin
   const n = Number(rawToUi(raw, decimals))
   if (!Number.isFinite(n)) return rawToUi(raw, decimals)
   // compact notation only helps above a thousand; below that it would round 0.003 to "0"
-  return compact && Math.abs(n) >= 1000 ? compactFmt.format(n) : fullFmt.format(n)
+  if (compact && Math.abs(n) >= 1000) return compactFmt.format(n)
+  // tiny values (fees, rent) keep their exact digits instead of rounding to 0
+  if (n !== 0 && Math.abs(n) < 0.01) return rawToUi(raw, decimals)
+  return fullFmt.format(n)
 }
 
 export function fmtPct(x: number, digits = 1): string {
