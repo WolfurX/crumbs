@@ -259,3 +259,11 @@ tr.me td { background: var(--accent-soft); }
 .history-list li { display: grid; grid-template-columns: 1rem 5.5rem 1fr auto; gap: .6rem; align-items: center; padding: .35rem .6rem; border-bottom: 1px solid var(--line); font-size: .85rem; }
 .history-list li:last-child { border-bottom: 0; }
 .history-list .dot { margin: 0; }
+
+/* click juice */
+.cookie-wrap { position: relative; width: min(320px, 70vw); }
+.cookie-wrap .cookie-btn { width: 100%; }
+.pop { position: absolute; transform: translate(-50%, -50%); font-family: var(--display); font-weight: 700; color: var(--accent); pointer-events: none; animation: pop .7s var(--ease) forwards; font-size: 1.2rem; text-shadow: 0 1px 0 var(--bg); }
+@keyframes pop { from { opacity: 1; translate: 0 0; } to { opacity: 0; translate: 0 -56px; } }
+.away { max-width: 40ch; }
+@media (prefers-reduced-motion: reduce) { .pop { animation: none; opacity: 0; } }

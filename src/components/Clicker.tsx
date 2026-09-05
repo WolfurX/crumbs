@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { ComputeBudgetProgram, Keypair, Transaction } from '@solana/web3.js'
 import { GameClient, explainGameError } from '../game/client'
@@ -8,7 +8,9 @@ import { emissionMath, type DayState, type DistributorState, type EmissionState,
 import { COOK_DECIMALS, addressUrl, txUrl } from '../lib/chain'
 import { fmtAmount, fmtInt, shortAddr } from '../lib/format'
 import { toast } from './Toast'
-import { IconCookie, IconCopy, IconDownload, IconRefresh, IconUsers } from '../icons'
+import { IconCookie, IconCopy, IconDownload, IconRefresh, IconShare2, IconUsers, IconVolume, IconVolumeOff } from '../icons'
+import { isMuted, setMuted, tick as playTick } from '../game/juice'
+import { renderBakeryCard } from '../game/bakerycard'
 
 const TOPUP_LAMPORTS = 100_000_000 // 0.1 COOK, about 20,000 clicks
 const CLICK_GAP_MS = 480 // the program takes two clicks per second
@@ -48,6 +50,10 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
   const [tick, setTick] = useState(0)
   const [optimistic, setOptimistic] = useState<bigint>(0n)
   const [showHistory, setShowHistory] = useState(false)
+  const [muted, setMutedState] = useState(isMuted)
+  const [pops, setPops] = useState<{ id: number; x: number; y: number; text: string }[]>([])
+  const [away, setAway] = useState<bigint | null>(null)
+  const [sharing, setSharing] = useState(false)
   const lastClick = useRef(0)
   const feedId = useRef(1)
   const clickSeq = useRef(0)
@@ -59,6 +65,10 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
       setGame(g); setEmission(e); setDistributor(d)
       if (owner) {
         const p = await client.fetchPlayer(owner)
+        if (p && p.cpsMilli > 0n) {
+          const gone = Math.min(7 * 86_400, Math.max(0, Math.floor(Date.now() / 1000) - Number(p.lastTs)))
+          setAway(gone > 120 ? p.cpsMilli * BigInt(gone) : null)
+        }
         setPlayer(p)
         syncAt.current = Date.now()
         setOptimistic(0n)
@@ -168,11 +178,21 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
     setFeed((old) => old.map((f) => (f.id === id ? { ...f, ...patch } : f)))
   }
 
-  async function click() {
+  async function click(e?: ReactMouseEvent<HTMLButtonElement>) {
     if (!owner || !session || !player || !game) return
     const now = Date.now()
     if (now - lastClick.current < CLICK_GAP_MS) return
     lastClick.current = now
+    setAway(null)
+    playTick('click')
+    if (e) {
+      const r = e.currentTarget.getBoundingClientRect()
+      const id = now + Math.random()
+      const x = e.clientX ? e.clientX - r.left : r.width / 2 + (Math.random() - 0.5) * 60
+      const y = e.clientY ? e.clientY - r.top : r.height / 3
+      setPops((ps) => [...ps.slice(-11), { id, x, y, text: `+${fmtCookies(clickPower)}` }])
+      setTimeout(() => setPops((ps) => ps.filter((q) => q.id !== id)), 750)
+    }
     if (clicksToday + feed.filter((f) => f.state === 'sent').length >= game.clickCapPerDay) {
       setError(CLICK_CAP_MSG)
       return
@@ -213,9 +233,25 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
     }
   }
 
-  const buy = (tier: number) => owner && player && sessionAction(`Buying ${TIER_NAMES[tier]}…`, () => [client.buyIx(session!.publicKey, owner, player, tier, 1)]).then((s) => s && toast(`${TIER_NAMES[tier]} bought`))
+  const buy = (tier: number) => owner && player && sessionAction(`Buying ${TIER_NAMES[tier]}…`, () => [client.buyIx(session!.publicKey, owner, player, tier, 1)]).then((s) => { if (s) { playTick('buy'); toast(`${TIER_NAMES[tier]} bought`) } })
   const settle = () => owner && player && sessionAction('Settling yesterday…', () => [client.settleIx(session!.publicKey, owner, player)]).then((s) => s && toast('Yesterday settled into claimable CRUMB'))
-  const claim = () => owner && player && sessionAction('Claiming CRUMB…', () => [client.claimIx(session!.publicKey, owner, player)]).then((s) => s && toast(`CRUMB claimed to ${shortAddr(owner.toBase58())}`))
+  const claim = () => owner && player && sessionAction('Claiming CRUMB…', () => [client.claimIx(session!.publicKey, owner, player)]).then((s) => { if (s) { playTick('claim'); toast(`CRUMB claimed to ${shortAddr(owner.toBase58())}`) } })
+
+  async function shareBakery() {
+    if (!player || !owner) return
+    setSharing(true)
+    try {
+      const rank = board.findIndex((p) => p.owner.equals(owner)) + 1
+      const blob = await renderBakeryCard(player, { owner: owner.toBase58(), rank: rank || null, players: Number(game?.players ?? 0n), site: location.host, cookiesText: fmtCookies(player.lifetimeCookiesMilli), cpsText: fmtCps(player.cpsMilli) })
+      const file = new File([blob], 'my-bakery.png', { type: 'image/png' })
+      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: 'My bakery on Cookie Chain' })
+      else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); toast('Bakery card saved as PNG') }
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') setError('Could not render the card: ' + (e as Error).message)
+    } finally {
+      setSharing(false)
+    }
+  }
 
   if (!owner) {
     return (
@@ -265,9 +301,13 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
               <div className="num big">{fmtCookies(liveCookies)}</div>
               <div className="muted small">cookies · {fmtCps(player.cpsMilli)} per second · +{fmtCookies(clickPower)} per click</div>
             </div>
-            <button className="cookie-btn" onClick={click} disabled={!session || sessionLow} aria-label="Click the cookie">
-              <CookieArt big />
-            </button>
+            <div className="cookie-wrap">
+              <button className="cookie-btn" onClick={click} disabled={!session || sessionLow} aria-label="Click the cookie">
+                <CookieArt big />
+              </button>
+              {pops.map((p) => <span key={p.id} className="pop" style={{ left: p.x, top: p.y }}>{p.text}</span>)}
+            </div>
+            {away !== null && away > 0n && <p className="small ink2 away">While you were away your bakers made <b className="num">{fmtCookies(away)}</b> cookies. They land with your next click.</p>}
             <div className="row between small muted">
               <span className="num">{fmtInt(clicksToday)} / {fmtInt(game.clickCapPerDay)} clicks today</span>
               <span className="feed" aria-label="Recent clicks">
@@ -298,7 +338,13 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
           </div>
 
           <aside className="game-side">
-            <h3>Session key</h3>
+            <div className="row between">
+              <h3 style={{ margin: 0 }}>Session key</h3>
+              <span className="row" style={{ gap: '.2rem' }}>
+                <button className="btn quiet sm" title={muted ? 'Sound off' : 'Sound on'} aria-pressed={!muted} onClick={() => { const v = !muted; setMuted(v); setMutedState(v) }}>{muted ? <IconVolumeOff /> : <IconVolume />}</button>
+                <button className="btn quiet sm" title="Share my bakery as an image" disabled={sharing} onClick={shareBakery}><IconShare2 /></button>
+              </span>
+            </div>
             {session ? (
               <>
                 <div className="small mono">{shortAddr(session.publicKey.toBase58(), 6, 6)}</div>
