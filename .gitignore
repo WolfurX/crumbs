@@ -4,3 +4,7 @@ dev-dist
 *.local
 .DS_Store
 scripts/*.png
+program/target
+program/node_modules
+program/.anchor
+program/test-ledger
