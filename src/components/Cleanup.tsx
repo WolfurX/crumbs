@@ -153,6 +153,7 @@ export function Cleanup() {
           {error && <span className="err">{error}</span>}
         </div>
         {batches.length > 0 && <div style={{ marginTop: '1rem' }}><BatchList batches={batches} unit="actions" /></div>}
+          {batches.some((b) => b.status === 'signing') && <p className="small muted" style={{ marginTop: '0.6rem' }}>Waiting on the wallet. If it shows a failed simulation, its network is not Cookie Chain: in Nightly open the network switcher, pick Cookie, then retry.</p>}
       </section>
     </>
   )

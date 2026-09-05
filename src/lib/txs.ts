@@ -111,7 +111,8 @@ export async function runBatches({ connection, signer, batches, onUpdate, only =
   }
   let signed: Transaction[]
   try {
-    signed = signer.signAllTransactions ? await signer.signAllTransactions(txs) : await sequentialSign(signer, txs)
+    const signing = signer.signAllTransactions ? signer.signAllTransactions(txs) : sequentialSign(signer, txs)
+    signed = await withTimeout(signing, SIGN_TIMEOUT_MS)
   } catch (e) {
     for (const b of todo) {
       b.status = 'failed'
@@ -139,6 +140,18 @@ export async function runBatches({ connection, signer, batches, onUpdate, only =
     }
     onUpdate(b)
   }
+}
+
+// Nightly and friends simulate on the network they are set to before signing. Pointed at Solana
+// mainnet, a Cookie Chain transaction "fails" there and the wallet never answers, so we stop waiting.
+const SIGN_TIMEOUT_MS = 120_000
+export const WRONG_NETWORK_HINT = 'The wallet did not return a signature. Make sure it is on Cookie Chain: in Nightly, open the network switcher and pick Cookie, then try again.'
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(WRONG_NETWORK_HINT)), ms)
+    p.then((v) => (clearTimeout(t), resolve(v)), (e) => (clearTimeout(t), reject(e)))
+  })
 }
 
 async function sequentialSign(signer: Signer, txs: Transaction[]): Promise<Transaction[]> {

@@ -26,7 +26,8 @@ const fullFmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 4 })
 export function fmtAmount(raw: bigint, decimals: number, compact = false): string {
   const n = Number(rawToUi(raw, decimals))
   if (!Number.isFinite(n)) return rawToUi(raw, decimals)
-  return compact ? compactFmt.format(n) : fullFmt.format(n)
+  // compact notation only helps above a thousand; below that it would round 0.003 to "0"
+  return compact && Math.abs(n) >= 1000 ? compactFmt.format(n) : fullFmt.format(n)
 }
 
 export function fmtPct(x: number, digits = 1): string {

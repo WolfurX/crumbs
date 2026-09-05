@@ -14,7 +14,7 @@ Live: https://wolfurx.github.io/crumbs/
 
 ## Using it
 
-1. Install [Nightly](https://nightly.app), the wallet with first-class Cookie Chain support, and add the Cookie Chain RPC `https://rpc.cookiescan.io` in its network settings so your balances show. Any wallet that speaks the Wallet Standard will connect; Crumbs sends transactions to the Cookie Chain RPC itself, so the wallet only has to sign.
+1. Install [Nightly](https://nightly.app) and switch its network to **Cookie** (network switcher, top right, under SVM). Nightly ships Cookie Chain as a built-in network, so no custom RPC is needed. Any wallet that speaks the Wallet Standard will connect, but a wallet pointed at Solana mainnet will simulate Cookie Chain transactions against the wrong chain and refuse to sign them.
 2. Get a little COOK for fees. Bridge from Solana at https://hyperlane.cookiescan.io, or swap on a Cookie Chain DEX. A 100-recipient airdrop costs well under 0.01 COOK in fees plus about 0.002 COOK of rent per recipient who has no token account yet.
 3. Open https://wolfurx.github.io/crumbs/ and install it from the browser menu if you want it as an app. The shell and the token registry are cached for offline use.
 

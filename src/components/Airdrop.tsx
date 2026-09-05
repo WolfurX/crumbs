@@ -251,6 +251,7 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
             {batches.some((b) => b.signature) && <button className="btn" onClick={exportResults}>Export results</button>}
           </div>
           <BatchList batches={batches} unit="recipients" />
+          {batches.some((b) => b.status === 'signing') && <p className="small muted" style={{ marginTop: '0.6rem' }}>Waiting on the wallet. If it shows a failed simulation, its network is not Cookie Chain: in Nightly open the network switcher, pick Cookie, then retry.</p>}
         </section>
       )}
       {wallet.publicKey && !PublicKey.isOnCurve(wallet.publicKey.toBytes()) && <div className="notice">Connected key is off-curve; use a normal wallet.</div>}
