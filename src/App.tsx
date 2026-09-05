@@ -3,7 +3,10 @@ import { WalletButton } from './components/WalletButton'
 import { Snapshot, type SnapshotResult } from './components/Snapshot'
 import { Airdrop } from './components/Airdrop'
 import { Cleanup } from './components/Cleanup'
-import { IconAperture, IconBrush, IconParachute } from './icons'
+import { StatStrip } from './components/StatStrip'
+import { Toaster } from './components/Toast'
+import { useInstallPrompt } from './lib/install'
+import { IconAperture, IconBrush, IconDownload, IconParachute } from './icons'
 
 type Tab = 'snapshot' | 'airdrop' | 'cleanup'
 
@@ -16,6 +19,7 @@ const TABS: { id: Tab; label: string; icon: typeof IconAperture }[] = [
 export default function App() {
   const [tab, setTab] = useState<Tab>('snapshot')
   const [snapshot, setSnapshot] = useState<SnapshotResult | null>(null)
+  const install = useInstallPrompt()
 
   return (
     <div className="app">
@@ -24,13 +28,27 @@ export default function App() {
           <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" />
           Crumbs <span>for Cookie Chain</span>
         </div>
-        <WalletButton />
+        <div className="row">
+          {install && (
+            <button className="btn" onClick={install} title="Install Crumbs as an app">
+              <IconDownload /> Install
+            </button>
+          )}
+          <WalletButton />
+        </div>
       </header>
 
-      <section className="hero">
-        <h1>The utility app for Cookie Chain.</h1>
-        <p>Snapshot holders, airdrop tokens, tidy your wallet. Runs in your browser, installs as an app, takes no fee.</p>
+      <section className="hero with-art">
+        <div>
+          <h1>The utility app for Cookie Chain.</h1>
+          <p>Snapshot holders, airdrop tokens, tidy your wallet. Runs in your browser, installs as an app, takes no fee.</p>
+        </div>
+        <div className="hero-art" aria-hidden="true">
+          <img src={`${import.meta.env.BASE_URL}hero.svg`} alt="" width={480} height={270} loading="eager" />
+        </div>
       </section>
+
+      <StatStrip />
 
       <nav className="tabs" role="tablist" aria-label="Tools">
         {TABS.map(({ id, label, icon: Icon }) => (
@@ -53,6 +71,7 @@ export default function App() {
         <a href="https://hyperlane.cookiescan.io" target="_blank" rel="noreferrer">Bridge COOK</a>
         <a href="https://nightly.app" target="_blank" rel="noreferrer">Nightly wallet</a>
       </footer>
+      <Toaster />
     </div>
   )
 }

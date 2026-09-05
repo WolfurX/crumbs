@@ -8,6 +8,10 @@ export interface TokenInfo {
   logo?: string
   holderCount?: number
   verified?: boolean
+  priceUsd?: number
+  marketCap?: number
+  liquidity?: number
+  change24h?: number
 }
 
 interface RegistryRow {
@@ -19,7 +23,13 @@ interface RegistryRow {
   holderCount?: number
   verified?: boolean
   hidden?: boolean
+  price?: string | null
+  marketCap?: string | null
+  liquidity?: string | null
+  change24h?: string | number | null
 }
+
+const num = (v: unknown): number | undefined => (v === null || v === undefined || v === '' ? undefined : Number.isFinite(Number(v)) ? Number(v) : undefined)
 
 let cache: Promise<Map<string, TokenInfo>> | null = null
 
@@ -40,9 +50,15 @@ export function loadRegistry(): Promise<Map<string, TokenInfo>> {
             logo: r.logoUri || undefined,
             holderCount: r.holderCount,
             verified: r.verified,
+            priceUsd: num(r.price),
+            marketCap: num(r.marketCap),
+            liquidity: num(r.liquidity),
+            change24h: num(r.change24h),
           })
         }
-        m.set(COOK_MINT, { mint: COOK_MINT, symbol: COOK, name: 'Cookie Chain native token', decimals: COOK_DECIMALS })
+        // the registry lists native COOK as "wCOOK" under the native mint id; keep its price, fix the name
+        const wcook = m.get(COOK_MINT)
+        m.set(COOK_MINT, { mint: COOK_MINT, symbol: COOK, name: 'Cookie Chain native token', decimals: COOK_DECIMALS, priceUsd: wcook?.priceUsd, holderCount: wcook?.holderCount, logo: wcook?.logo })
         return m
       })
       .catch((e) => {

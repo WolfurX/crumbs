@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
-import { PublicKey } from '@solana/web3.js'
 import type { SnapshotResult } from './Snapshot'
 import { BatchList } from './BatchList'
 import { ArtAirdrop } from './Art'
-import { IconDownload, IconParachute, IconRefresh } from '../icons'
+import { toast } from './Toast'
 import { planAirdrop, parseRecipientList, proRata, resolveAsset, type AirdropPlan, type Asset, type Recipient } from '../lib/airdrop'
 import { fetchOwnedAccounts, type OwnedAccount } from '../lib/revoke'
 import { loadRegistry, type TokenInfo } from '../lib/tokens'
 import { runBatches, type Batch } from '../lib/txs'
 import { COOK_DECIMALS, COOK_MINT } from '../lib/chain'
 import { fmtAmount, fmtInt, uiToRaw } from '../lib/format'
+import { IconArrowRight, IconCheck, IconDownload, IconParachute, IconRefresh } from '../icons'
 
 interface Props {
   snapshot: SnapshotResult | null
@@ -19,10 +19,18 @@ interface Props {
 
 type Source = 'snapshot' | 'list'
 type Mode = 'fixed' | 'prorata'
+type Step = 1 | 2 | 3
+
+const STEPS: { n: Step; label: string }[] = [
+  { n: 1, label: 'Recipients' },
+  { n: 2, label: 'Amount' },
+  { n: 3, label: 'Review and send' },
+]
 
 export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
   const { connection } = useConnection()
   const wallet = useWallet()
+  const [step, setStep] = useState<Step>(1)
   const [owned, setOwned] = useState<OwnedAccount[]>([])
   const [registry, setRegistry] = useState<Map<string, TokenInfo>>(new Map())
   const [cookBalance, setCookBalance] = useState<bigint>(0n)
@@ -72,6 +80,9 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
     return rows
   }, [snapshot, minUi, skipProgram, skipSelf, topN, wallet.publicKey])
 
+  const listCount = useMemo(() => list.split(/\r?\n/).filter((l) => l.trim()).length, [list])
+  const recipientCount = source === 'snapshot' ? snapshotRows.length : listCount
+
   async function makePlan() {
     if (!wallet.publicKey) return
     setError(null)
@@ -105,6 +116,11 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
     }
   }
 
+  function goReview() {
+    setStep(3)
+    void makePlan()
+  }
+
   async function send(retry = false) {
     if (!plan || !wallet.publicKey || !wallet.signTransaction) return
     setRunning(true)
@@ -117,6 +133,8 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
         only: retry ? ['failed', 'expired'] : ['pending'],
         onUpdate: () => setBatches([...plan.batches]),
       })
+      const ok = plan.batches.filter((b) => b.status === 'confirmed').reduce((n, b) => n + b.items.length, 0)
+      if (plan.batches.every((b) => b.status === 'confirmed')) toast(`Airdrop complete: ${fmtInt(ok)} wallet${ok === 1 ? '' : 's'} received ${plan.asset.symbol}`)
     } finally {
       setRunning(false)
     }
@@ -134,6 +152,7 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
   const done = batches.length > 0 && batches.every((b) => b.status === 'confirmed')
   const canRetry = batches.some((b) => b.status === 'failed' || b.status === 'expired')
   const sentRecipients = batches.filter((b) => b.status === 'confirmed').reduce((n, b) => n + b.items.length, 0)
+  const locked = running || batches.some((b) => b.status !== 'pending')
 
   function exportResults() {
     if (!plan) return
@@ -145,7 +164,15 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
     a.href = URL.createObjectURL(blob)
     a.download = `airdrop-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`
     a.click()
-    URL.revokeObjectURL(a.href)
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+    toast('Results CSV saved')
+  }
+
+  function reset() {
+    setPlan(null)
+    setBatches([])
+    setError(null)
+    setStep(1)
   }
 
   if (!wallet.publicKey) {
@@ -163,105 +190,142 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
 
   return (
     <>
-      <section className="card">
-        <h2>Airdrop</h2>
-        <p className="lead">Batched transfers, one wallet prompt, live confirmations. Missing token accounts are created for the recipients.</p>
+      <div className="steps" role="list" aria-label="Airdrop steps">
+        {STEPS.map((s) => (
+          <button key={s.n} role="listitem" className={`step${s.n < step ? ' done' : ''}`} aria-current={s.n === step ? 'step' : undefined} disabled={locked || (s.n === 3 && step < 3)} onClick={() => !locked && s.n < 3 && setStep(s.n)}>
+            <span className="n">{s.n < step ? <IconCheck /> : s.n}</span>
+            <span className="label">{s.label}</span>
+            {s.n === 1 && step > 1 && <span className="muted num" style={{ marginLeft: 'auto' }}>{fmtInt(recipientCount)}</span>}
+            {s.n === 2 && step > 2 && plan && <span className="muted num" style={{ marginLeft: 'auto' }}>{fmtAmount(plan.totalAmount, plan.asset.decimals, true)} {plan.asset.symbol}</span>}
+          </button>
+        ))}
+      </div>
 
-        <div className="grid2">
-          <label className="field">
-            <span>Send</span>
-            <select className="input" value={asset.mint} onChange={(e) => setAssetMint(e.target.value)}>
-              {assetOptions.map((o) => (
-                <option key={o.mint} value={o.mint}>{o.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>{source === 'snapshot' ? (mode === 'fixed' ? 'Amount per wallet' : 'Total to split pro-rata') : 'Default amount per line (optional)'}</span>
-            <input className="input num" inputMode="decimal" placeholder="0" value={amountUi} onChange={(e) => setAmountUi(e.target.value)} />
-          </label>
-        </div>
-
-        <hr className="hr" />
-        <div className="row between">
+      {step === 1 && (
+        <section className="card">
+          <h2>Who receives it</h2>
+          <p className="lead">A holder snapshot with filters, or a list you paste.</p>
           <div className="seg" role="group" aria-label="Recipients">
             <button aria-pressed={source === 'snapshot'} onClick={() => setSource('snapshot')}>Snapshot holders</button>
             <button aria-pressed={source === 'list'} onClick={() => setSource('list')}>Pasted list</button>
           </div>
+
+          {source === 'snapshot' ? (
+            snapshot ? (
+              <div className="stack" style={{ marginTop: '0.9rem' }}>
+                <div className="ink2">
+                  {snapshot.token.symbol} snapshot from {new Date(snapshot.takenAt).toLocaleString()}: <b className="num">{fmtInt(snapshotRows.length)}</b> recipients after filters
+                </div>
+                <div className="row">
+                  <label className="check"><input type="checkbox" checked={skipProgram} onChange={(e) => setSkipProgram(e.target.checked)} /> Skip pools and vaults</label>
+                  <label className="check"><input type="checkbox" checked={skipSelf} onChange={(e) => setSkipSelf(e.target.checked)} /> Skip my wallet</label>
+                </div>
+                <div className="grid2">
+                  <label className="field"><span>Min {snapshot.token.symbol} balance</span><input className="input num" inputMode="decimal" placeholder="0" value={minUi} onChange={(e) => setMinUi(e.target.value)} /></label>
+                  <label className="field"><span>Top N holders only</span><input className="input num" inputMode="numeric" placeholder="all" value={topN} onChange={(e) => setTopN(e.target.value)} /></label>
+                </div>
+              </div>
+            ) : (
+              <div className="notice" style={{ marginTop: '0.9rem' }}>
+                No snapshot yet. <button className="btn quiet" onClick={onNeedSnapshot}>Take one</button> or paste a list.
+              </div>
+            )
+          ) : (
+            <label className="field" style={{ marginTop: '0.9rem' }}>
+              <span>One recipient per line: address, then an optional amount</span>
+              <textarea className="input" spellCheck={false} placeholder={'8xk3…Wq9d, 100\n5Fjr…Lm2a, 250\n9Hq2…Zt7c'} value={list} onChange={(e) => setList(e.target.value)} />
+            </label>
+          )}
+
+          <div className="row" style={{ marginTop: '1rem' }}>
+            <button className="btn primary" disabled={recipientCount === 0} onClick={() => setStep(2)}>
+              Continue with {fmtInt(recipientCount)} recipient{recipientCount === 1 ? '' : 's'} <IconArrowRight />
+            </button>
+          </div>
+        </section>
+      )}
+
+      {step === 2 && (
+        <section className="card">
+          <h2>What they get</h2>
+          <p className="lead">Pick the asset from your wallet and how the amount is split.</p>
+          <div className="grid2">
+            <label className="field">
+              <span>Send</span>
+              <select className="input" value={asset.mint} onChange={(e) => setAssetMint(e.target.value)}>
+                {assetOptions.map((o) => (
+                  <option key={o.mint} value={o.mint}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>{source === 'snapshot' ? (mode === 'fixed' ? 'Amount per wallet' : 'Total to split pro-rata') : 'Default amount per line (optional)'}</span>
+              <input className="input num" inputMode="decimal" placeholder="0" value={amountUi} onChange={(e) => setAmountUi(e.target.value)} />
+            </label>
+          </div>
           {source === 'snapshot' && (
-            <div className="seg" role="group" aria-label="Amount mode">
+            <div className="seg" role="group" aria-label="Amount mode" style={{ marginTop: '0.9rem' }}>
               <button aria-pressed={mode === 'fixed'} onClick={() => setMode('fixed')}>Same for everyone</button>
               <button aria-pressed={mode === 'prorata'} onClick={() => setMode('prorata')}>Pro-rata to holdings</button>
             </div>
           )}
-        </div>
-
-        {source === 'snapshot' ? (
-          snapshot ? (
-            <div className="stack" style={{ marginTop: '0.9rem' }}>
-              <div className="ink2">
-                {snapshot.token.symbol} snapshot from {new Date(snapshot.takenAt).toLocaleString()}: <b className="num">{fmtInt(snapshotRows.length)}</b> recipients after filters
-              </div>
-              <div className="row">
-                <label className="check"><input type="checkbox" checked={skipProgram} onChange={(e) => setSkipProgram(e.target.checked)} /> Skip pools and vaults</label>
-                <label className="check"><input type="checkbox" checked={skipSelf} onChange={(e) => setSkipSelf(e.target.checked)} /> Skip my wallet</label>
-              </div>
-              <div className="grid2">
-                <label className="field"><span>Min {snapshot.token.symbol} balance</span><input className="input num" inputMode="decimal" placeholder="0" value={minUi} onChange={(e) => setMinUi(e.target.value)} /></label>
-                <label className="field"><span>Top N holders only</span><input className="input num" inputMode="numeric" placeholder="all" value={topN} onChange={(e) => setTopN(e.target.value)} /></label>
-              </div>
-            </div>
-          ) : (
-            <div className="notice" style={{ marginTop: '0.9rem' }}>
-              No snapshot yet. <button className="btn quiet" onClick={onNeedSnapshot}>Take one</button> or paste a list.
-            </div>
-          )
-        ) : (
-          <label className="field" style={{ marginTop: '0.9rem' }}>
-            <span>One recipient per line: address, then an optional amount</span>
-            <textarea className="input" spellCheck={false} placeholder={'8xk3…Wq9d, 100\n5Fjr…Lm2a, 250\n9Hq2…Zt7c'} value={list} onChange={(e) => setList(e.target.value)} />
-          </label>
-        )}
-
-        <div className="row" style={{ marginTop: '1rem' }}>
-          <button className="btn primary" disabled={!!busy || running} onClick={makePlan}>Preview</button>
-          {busy && <span className="muted">{busy}</span>}
-          {error && <span className="err">{error}</span>}
-        </div>
-      </section>
-
-      {plan && (
-        <section className="card">
-          <h2>Review</h2>
-          <div className="tiles" style={{ margin: '0.75rem 0' }}>
-            <div className="tile"><div className="label">Recipients</div><div className="value num">{fmtInt(plan.recipients.length)}</div></div>
-            <div className="tile"><div className="label">Total {plan.asset.symbol}</div><div className="value num">{fmtAmount(plan.totalAmount, plan.asset.decimals, true)}</div></div>
-            <div className="tile"><div className="label">Transactions</div><div className="value num">{plan.batches.length}</div></div>
-            <div className="tile"><div className="label">Rent for new accounts</div><div className="value num">{fmtAmount(plan.rentLamports, COOK_DECIMALS)} COOK</div></div>
-          </div>
-          <p className="small muted">
-            {plan.ataCreates > 0 && <>{fmtInt(plan.ataCreates)} recipients get a new token account, paid by you and reclaimable by them. </>}
-            Network fees about {fmtAmount(plan.feeLamports, COOK_DECIMALS)} COOK.
-            {plan.invalid.length > 0 && <> {plan.invalid.length} invalid address{plan.invalid.length > 1 ? 'es' : ''} skipped.</>}
-            {plan.belowRent > 0 && <> {fmtInt(plan.belowRent)} skipped: an empty wallet cannot receive less than {fmtAmount(plan.rentMinimum, COOK_DECIMALS)} COOK, the chain's rent minimum.</>}
+          <p className="small muted" style={{ marginTop: '0.9rem' }}>
+            {source === 'snapshot' && mode === 'prorata' ? 'The total is split in proportion to each holder’s balance; rounding dust stays with you.' : source === 'snapshot' ? 'Every recipient gets exactly this amount.' : 'Lines without an amount use the default.'}
           </p>
-          {shortfall && shortfall.length > 0 && <div className="notice err" style={{ marginTop: '0.75rem' }}>{shortfall.join(' ')}</div>}
-
-          <div className="row" style={{ margin: '1rem 0' }}>
-            {!done && !canRetry && (
-              <button className="btn primary" disabled={running || (shortfall?.length ?? 0) > 0 || !wallet.signTransaction} onClick={() => send(false)}>
-                <IconParachute /> {running ? 'Working…' : `Sign and send ${plan.batches.length} transaction${plan.batches.length > 1 ? 's' : ''}`}
-              </button>
-            )}
-            {canRetry && !running && <button className="btn primary" onClick={() => send(true)}><IconRefresh /> Retry failed</button>}
-            {done && <span className="ink2">Done. {fmtInt(sentRecipients)} wallet{sentRecipients === 1 ? '' : 's'} received {plan.asset.symbol}.</span>}
-            {batches.some((b) => b.signature) && <button className="btn" onClick={exportResults}><IconDownload /> Export results</button>}
+          <div className="row" style={{ marginTop: '1rem' }}>
+            <button className="btn" onClick={() => setStep(1)}>Back</button>
+            <button className="btn primary" disabled={source === 'snapshot' && !amountUi.trim()} onClick={goReview}>
+              Review <IconArrowRight />
+            </button>
           </div>
-          <BatchList batches={batches} unit="recipients" />
-          {batches.some((b) => b.status === 'signing') && <p className="small muted" style={{ marginTop: '0.6rem' }}>Waiting on the wallet. If it shows a failed simulation, its network is not Cookie Chain: in Nightly open the network switcher, pick Cookie, then retry.</p>}
         </section>
       )}
-      {wallet.publicKey && !PublicKey.isOnCurve(wallet.publicKey.toBytes()) && <div className="notice">Connected key is off-curve; use a normal wallet.</div>}
+
+      {step === 3 && (
+        <section className="card">
+          <h2>Review and send</h2>
+          {busy && <p className="muted">{busy}</p>}
+          {error && <p className="err">{error}</p>}
+          {plan && (
+            <>
+              <div className="tiles" style={{ margin: '0.75rem 0' }}>
+                <div className="tile"><div className="label">Recipients</div><div className="value num">{fmtInt(plan.recipients.length)}</div></div>
+                <div className="tile"><div className="label">Total {plan.asset.symbol}</div><div className="value num">{fmtAmount(plan.totalAmount, plan.asset.decimals, true)}</div></div>
+                <div className="tile"><div className="label">Transactions</div><div className="value num">{plan.batches.length}</div></div>
+                <div className="tile"><div className="label">Rent for new accounts</div><div className="value num">{fmtAmount(plan.rentLamports, COOK_DECIMALS)} COOK</div></div>
+              </div>
+              <p className="small muted">
+                {plan.ataCreates > 0 && <>{fmtInt(plan.ataCreates)} recipients get a new token account, paid by you and reclaimable by them. </>}
+                Network fees about {fmtAmount(plan.feeLamports, COOK_DECIMALS)} COOK.
+                {plan.invalid.length > 0 && <> {plan.invalid.length} invalid address{plan.invalid.length > 1 ? 'es' : ''} skipped.</>}
+                {plan.belowRent > 0 && <> {fmtInt(plan.belowRent)} skipped: an empty wallet cannot receive less than {fmtAmount(plan.rentMinimum, COOK_DECIMALS)} COOK, the chain's rent minimum.</>}
+              </p>
+              {shortfall && shortfall.length > 0 && <div className="notice err" style={{ marginTop: '0.75rem' }}>{shortfall.join(' ')}</div>}
+
+              <div className="row" style={{ margin: '1rem 0' }}>
+                {!locked && <button className="btn" onClick={() => setStep(2)}>Back</button>}
+                {!done && !canRetry && (
+                  <button className="btn primary" disabled={running || (shortfall?.length ?? 0) > 0 || !wallet.signTransaction} onClick={() => send(false)}>
+                    <IconParachute /> {running ? 'Working…' : `Sign and send ${plan.batches.length} transaction${plan.batches.length > 1 ? 's' : ''}`}
+                  </button>
+                )}
+                {canRetry && !running && <button className="btn primary" onClick={() => send(true)}><IconRefresh /> Retry failed</button>}
+                {done && <span className="ink2">Done. {fmtInt(sentRecipients)} wallet{sentRecipients === 1 ? '' : 's'} received {plan.asset.symbol}.</span>}
+                {batches.some((b) => b.signature) && <button className="btn" onClick={exportResults}><IconDownload /> Export results</button>}
+                {done && <button className="btn quiet" onClick={reset}>New airdrop</button>}
+              </div>
+              <BatchList batches={batches} unit="recipients" />
+              {batches.some((b) => b.status === 'signing') && <p className="small muted" style={{ marginTop: '0.6rem' }}>Waiting on the wallet. If it shows a failed simulation, its network is not Cookie Chain: in Nightly open the network switcher, pick Cookie, then retry.</p>}
+            </>
+          )}
+          {!plan && !busy && error && (
+            <div className="row" style={{ marginTop: '1rem' }}>
+              <button className="btn" onClick={() => setStep(2)}>Back</button>
+              <button className="btn primary" onClick={() => void makePlan()}><IconRefresh /> Try again</button>
+            </div>
+          )}
+        </section>
+      )}
     </>
   )
 }

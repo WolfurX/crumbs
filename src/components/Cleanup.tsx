@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { BatchList } from './BatchList'
 import { ArtCleanup } from './Art'
+import { toast } from './Toast'
 import { IconBrush, IconRefresh } from '../icons'
 import { closeItem, fetchOwnedAccounts, packCleanup, revokeItem, type OwnedAccount } from '../lib/revoke'
 import { loadRegistry, type TokenInfo } from '../lib/tokens'
@@ -66,6 +67,8 @@ export function Cleanup() {
         batches: bs,
         onUpdate: () => setBatches([...bs]),
       })
+      const ok = bs.filter((b) => b.status === 'confirmed').reduce((n, b) => n + b.items.length, 0)
+      if (ok) toast(`${fmtInt(ok)} action${ok === 1 ? '' : 's'} confirmed`)
     } finally {
       setRunning(false)
       setPicked(new Set())
