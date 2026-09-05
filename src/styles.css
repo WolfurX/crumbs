@@ -113,7 +113,7 @@ tr:last-child td { border-bottom: 0; }
 @media (hover: hover) and (pointer: fine) { .menu button:hover { background: var(--surface); } }
 .wallet { position: relative; }
 footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.85rem; display: flex; gap: 1rem; flex-wrap: wrap; }
-@media (max-width: 560px) { .bar-row { grid-template-columns: 84px 1fr 56px; } .top { height: 56px; } .tile .value { font-size: 1.15rem; } }
+@media (max-width: 560px) { .bar-row { grid-template-columns: 84px 1fr 56px; } .top { height: 56px; } .tile .value { font-size: 1.15rem; } .brand span { display: none; } }
 
 /* hero */
 .hero { display: grid; gap: 0.35rem; padding: 1.6rem 0 0.4rem; }
