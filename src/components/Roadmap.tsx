@@ -2,21 +2,21 @@ import { IconHash, IconLink, IconUsers } from '../icons'
 
 const ITEMS = [
   {
-    icon: IconLink,
-    name: 'Swap by link',
-    text: 'Trade any two tokens wallet to wallet. Both sides sign one transaction, so there is no escrow and no counterparty risk.',
-    status: 'in progress',
-  },
-  {
     icon: IconHash,
     name: '.cook names everywhere',
-    text: 'Type a .cook name wherever Crumbs asks for an address: recipients, holder search, cleanup.',
-    status: 'planned',
+    text: 'Type a .cook name wherever Crumbs asks for an address: recipients, swap counterparties, the leaderboard.',
+    status: 'in progress',
   },
   {
     icon: IconUsers,
     name: 'NFT collection snapshots',
     text: 'Every holder of a collection, with counts per wallet, ready for a holder-only airdrop.',
+    status: 'planned',
+  },
+  {
+    icon: IconLink,
+    name: 'Open swap offers',
+    text: 'Offers anyone can take, not just one named wallet. Needs a small escrow program; the targeted version ships first.',
     status: 'planned',
   },
 ]

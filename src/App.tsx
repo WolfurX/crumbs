@@ -8,21 +8,24 @@ import { Toaster } from './components/Toast'
 import { Roadmap } from './components/Roadmap'
 import { Clicker } from './components/Clicker'
 import { Crumb } from './components/Crumb'
+import { Swap } from './components/Swap'
+import { offerFromHash } from './swap/offer'
 import { useInstallPrompt } from './lib/install'
-import { IconAperture, IconBrush, IconCoins, IconCookie, IconDownload, IconParachute } from './icons'
+import { IconAperture, IconBrush, IconCoins, IconCookie, IconDownload, IconLink, IconParachute } from './icons'
 
-type Tab = 'snapshot' | 'airdrop' | 'cleanup' | 'clicker' | 'crumb'
+type Tab = 'snapshot' | 'airdrop' | 'cleanup' | 'swap' | 'clicker' | 'crumb'
 
 const TABS: { id: Tab; label: string; icon: typeof IconAperture }[] = [
   { id: 'snapshot', label: 'Snapshot', icon: IconAperture },
   { id: 'airdrop', label: 'Airdrop', icon: IconParachute },
   { id: 'cleanup', label: 'Cleanup', icon: IconBrush },
+  { id: 'swap', label: 'Swap', icon: IconLink },
   { id: 'clicker', label: 'Clicker', icon: IconCookie },
   { id: 'crumb', label: 'CRUMB', icon: IconCoins },
 ]
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('snapshot')
+  const [tab, setTab] = useState<Tab>(() => (offerFromHash() ? 'swap' : 'snapshot'))
   const [snapshot, setSnapshot] = useState<SnapshotResult | null>(null)
   const [presetMint, setPresetMint] = useState<string | null>(null)
   const install = useInstallPrompt()
@@ -72,6 +75,7 @@ export default function App() {
         {tab === 'snapshot' && <Snapshot result={snapshot} onResult={setSnapshot} onAirdrop={() => setTab('airdrop')} presetMint={presetMint} onPresetUsed={() => setPresetMint(null)} />}
         {tab === 'airdrop' && <Airdrop snapshot={snapshot} onNeedSnapshot={() => setTab('snapshot')} onSnapshot={setSnapshot} />}
         {tab === 'cleanup' && <Cleanup />}
+        {tab === 'swap' && <Swap />}
         {tab === 'clicker' && <Clicker onSnapshot={snapshotOf} />}
         {tab === 'crumb' && <Crumb onSnapshot={snapshotOf} />}
       </div>
