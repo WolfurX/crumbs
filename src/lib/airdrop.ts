@@ -30,6 +30,10 @@ export interface AirdropPlan {
   feeLamports: bigint
   /** Recipients dropped because their address is not valid. */
   invalid: string[]
+  /** COOK only: recipients dropped because the amount would leave a brand-new account under the rent minimum. */
+  belowRent: number
+  /** COOK only: the smallest amount an empty wallet can receive. */
+  rentMinimum: bigint
 }
 
 /** Resolve a mint into an Asset: native COOK, or a token with its program and decimals read on chain. */
@@ -66,10 +70,24 @@ export async function planAirdrop(connection: Connection, sender: PublicKey, ass
 
   const items: TransactionInstruction[][] = []
   let ataCreates = 0
+  let belowRent = 0
+  let rentMinimum = 0n
   if (asset.kind === 'native') {
-    for (const r of recipients) {
+    // A system account must end up rent exempt (about 0.00089 COOK), or the transfer fails. Wallets
+    // that do not exist yet, or sit below that line, need at least the difference.
+    rentMinimum = BigInt(await connection.getMinimumBalanceForRentExemption(0))
+    const infos = await accountLamports(connection, recipients.map((r) => new PublicKey(r.owner)))
+    const kept: Recipient[] = []
+    recipients.forEach((r, i) => {
+      if (infos[i] + r.amount < rentMinimum) {
+        belowRent += 1
+        return
+      }
+      kept.push(r)
       items.push([SystemProgram.transfer({ fromPubkey: sender, toPubkey: new PublicKey(r.owner), lamports: r.amount })])
-    }
+    })
+    recipients.length = 0
+    recipients.push(...kept)
   } else {
     const source = getAssociatedTokenAddressSync(asset.mint, sender, false, asset.programId)
     const atas = recipients.map((r) => getAssociatedTokenAddressSync(asset.mint, new PublicKey(r.owner), true, asset.programId))
@@ -95,7 +113,19 @@ export async function planAirdrop(connection: Connection, sender: PublicKey, ass
     rentLamports: BigInt(ataCreates) * TOKEN_ACCOUNT_RENT,
     feeLamports: BigInt(batches.length) * 5_000n,
     invalid,
+    belowRent,
+    rentMinimum,
   }
+}
+
+/** Current lamports per account, 0 for accounts that do not exist. */
+async function accountLamports(connection: Connection, keys: PublicKey[]): Promise<bigint[]> {
+  const out: bigint[] = new Array(keys.length).fill(0n)
+  for (let i = 0; i < keys.length; i += 100) {
+    const infos = await connection.getMultipleAccountsInfo(keys.slice(i, i + 100))
+    infos.forEach((info, j) => (out[i + j] = BigInt(info?.lamports ?? 0)))
+  }
+  return out
 }
 
 async function accountsExist(connection: Connection, keys: PublicKey[]): Promise<boolean[]> {

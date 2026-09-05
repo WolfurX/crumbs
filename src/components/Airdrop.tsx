@@ -93,7 +93,7 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
         if (!recipients.length) throw new Error('Paste at least one address.')
       }
       const p = await planAirdrop(connection, wallet.publicKey, resolved, recipients)
-      if (!p.recipients.length) throw new Error('No valid recipients.')
+      if (!p.recipients.length) throw new Error(p.belowRent ? `Every recipient would end up under the ${fmtAmount(p.rentMinimum, COOK_DECIMALS)} COOK rent minimum. Send more per wallet.` : 'No valid recipients.')
       setPlan(p)
       setBatches(p.batches)
     } catch (e) {
@@ -237,6 +237,7 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
             {plan.ataCreates > 0 && <>{fmtInt(plan.ataCreates)} recipients get a new token account, paid by you and reclaimable by them. </>}
             Network fees about {fmtAmount(plan.feeLamports, COOK_DECIMALS)} COOK.
             {plan.invalid.length > 0 && <> {plan.invalid.length} invalid address{plan.invalid.length > 1 ? 'es' : ''} skipped.</>}
+            {plan.belowRent > 0 && <> {fmtInt(plan.belowRent)} skipped: an empty wallet cannot receive less than {fmtAmount(plan.rentMinimum, COOK_DECIMALS)} COOK, the chain's rent minimum.</>}
           </p>
           {shortfall && shortfall.length > 0 && <div className="notice err" style={{ marginTop: '0.75rem' }}>{shortfall.join(' ')}</div>}
 
