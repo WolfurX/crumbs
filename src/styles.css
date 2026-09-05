@@ -176,7 +176,7 @@ h1, h2, .brand, .tile .value { font-family: var(--display); }
 .tokenhead > .row:first-child { flex: 1 1 320px; min-width: 0; }
 .tokenhead > .row:last-child { flex: none; }
 .logo { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: var(--surface-2); }
-.logo.placeholder { display: inline-block; border: 1px solid var(--line-strong); }
+.logo.mono { display: inline-grid; place-items: center; border: 1px solid var(--line-strong); color: var(--ink-2); font-size: 0.85rem; letter-spacing: 0.02em; }
 .btn.quiet.sm { padding: 0.15rem 0.3rem; }
 .btn.quiet.sm svg { font-size: 1rem; }
 

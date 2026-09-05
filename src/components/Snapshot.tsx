@@ -228,7 +228,7 @@ export function Snapshot({ result, onResult, onAirdrop }: Props) {
         <section className="card">
           <div className="tokenhead">
             <div className="row">
-              {result.token.logo ? <img src={result.token.logo} alt="" width={40} height={40} className="logo" /> : <span className="logo placeholder" />}
+              {result.token.logo ? <img src={result.token.logo} alt="" width={40} height={40} className="logo" /> : <span className="logo mono" aria-hidden="true">{(result.token.symbol || '?').slice(0, 2).toUpperCase()}</span>}
               <div>
                 <h2 className="row" style={{ gap: '0.4rem' }}>
                   {result.token.symbol}
