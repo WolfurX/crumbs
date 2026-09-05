@@ -94,9 +94,14 @@ export function buildOfferTx(maker: PublicKey, taker: PublicKey, give: Leg, get:
   return tx
 }
 
+/** URL-safe base64 by hand: the browser Buffer polyfill does not know 'base64url'. */
 export function encodeOffer(tx: Transaction): string {
   const bytes = tx.serialize({ requireAllSignatures: false, verifySignatures: false })
-  return Buffer.from(bytes).toString('base64url')
+  return Buffer.from(bytes).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+function fromUrlSafe(s: string): Buffer {
+  const b64 = s.replace(/-/g, '+').replace(/_/g, '/')
+  return Buffer.from(b64 + '='.repeat((4 - (b64.length % 4)) % 4), 'base64')
 }
 
 export function offerLink(encoded: string): string {
@@ -113,7 +118,7 @@ export function offerFromHash(hash = location.hash): string | null {
  * taker never signs an instruction they did not see described.
  */
 export function decodeOffer(encoded: string): Offer {
-  const tx = Transaction.from(Buffer.from(encoded, 'base64url'))
+  const tx = Transaction.from(fromUrlSafe(encoded))
   if (!tx.feePayer) throw new Error('No fee payer')
   const ixs = tx.instructions
   if (ixs.length < 3 || ixs.length > 5) throw new Error('Unexpected instruction count')
