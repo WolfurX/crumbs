@@ -6,21 +6,30 @@ import { Cleanup } from './components/Cleanup'
 import { StatStrip } from './components/StatStrip'
 import { Toaster } from './components/Toast'
 import { Roadmap } from './components/Roadmap'
+import { Clicker } from './components/Clicker'
+import { Crumb } from './components/Crumb'
 import { useInstallPrompt } from './lib/install'
-import { IconAperture, IconBrush, IconDownload, IconParachute } from './icons'
+import { IconAperture, IconBrush, IconCoins, IconCookie, IconDownload, IconParachute } from './icons'
 
-type Tab = 'snapshot' | 'airdrop' | 'cleanup'
+type Tab = 'snapshot' | 'airdrop' | 'cleanup' | 'clicker' | 'crumb'
 
 const TABS: { id: Tab; label: string; icon: typeof IconAperture }[] = [
   { id: 'snapshot', label: 'Snapshot', icon: IconAperture },
   { id: 'airdrop', label: 'Airdrop', icon: IconParachute },
   { id: 'cleanup', label: 'Cleanup', icon: IconBrush },
+  { id: 'clicker', label: 'Clicker', icon: IconCookie },
+  { id: 'crumb', label: 'CRUMB', icon: IconCoins },
 ]
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('snapshot')
   const [snapshot, setSnapshot] = useState<SnapshotResult | null>(null)
+  const [presetMint, setPresetMint] = useState<string | null>(null)
   const install = useInstallPrompt()
+  const snapshotOf = (mint: string) => {
+    setPresetMint(mint)
+    setTab('snapshot')
+  }
 
   return (
     <div className="app">
@@ -42,7 +51,7 @@ export default function App() {
       <section className="hero with-art">
         <div>
           <h1>The utility app for Cookie Chain.</h1>
-          <p>Snapshot holders, airdrop tokens, tidy your wallet. Runs in your browser, installs as an app, takes no fee.</p>
+          <p>Snapshot holders, airdrop tokens, tidy your wallet, and play the clicker that mints CRUMB. Runs in your browser, installs as an app, takes no fee.</p>
         </div>
         <div className="hero-art" aria-hidden="true">
           <img src={`${import.meta.env.BASE_URL}hero.svg`} alt="" width={480} height={270} loading="eager" />
@@ -60,9 +69,11 @@ export default function App() {
       </nav>
 
       <div className="panel" key={tab}>
-        {tab === 'snapshot' && <Snapshot result={snapshot} onResult={setSnapshot} onAirdrop={() => setTab('airdrop')} />}
+        {tab === 'snapshot' && <Snapshot result={snapshot} onResult={setSnapshot} onAirdrop={() => setTab('airdrop')} presetMint={presetMint} onPresetUsed={() => setPresetMint(null)} />}
         {tab === 'airdrop' && <Airdrop snapshot={snapshot} onNeedSnapshot={() => setTab('snapshot')} />}
         {tab === 'cleanup' && <Cleanup />}
+        {tab === 'clicker' && <Clicker onSnapshot={snapshotOf} />}
+        {tab === 'crumb' && <Crumb onSnapshot={snapshotOf} />}
       </div>
 
       <Roadmap />

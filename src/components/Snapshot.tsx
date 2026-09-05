@@ -24,13 +24,15 @@ interface Props {
   result: SnapshotResult | null
   onResult: (r: SnapshotResult) => void
   onAirdrop: () => void
+  presetMint?: string | null
+  onPresetUsed?: () => void
 }
 
 type SortKey = 'balance' | 'owner' | 'accounts'
 const PAGE = 25
 const usd = (n: number) => (n >= 1 ? `$${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : n >= 0.01 ? `$${n.toFixed(4)}` : `$${n.toPrecision(3)}`)
 
-export function Snapshot({ result, onResult, onAirdrop }: Props) {
+export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed }: Props) {
   const { connection } = useConnection()
   const [query, setQuery] = useState('')
   const [registry, setRegistry] = useState<Map<string, TokenInfo> | null>(null)
@@ -48,6 +50,15 @@ export function Snapshot({ result, onResult, onAirdrop }: Props) {
   useEffect(() => {
     loadRegistry().then(setRegistry).catch(() => setRegistry(new Map()))
   }, [])
+
+  // another tab asked for a snapshot of a specific mint
+  useEffect(() => {
+    if (presetMint && registry) {
+      onPresetUsed?.()
+      void take(presetMint)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetMint, registry])
 
   const suggestions = useMemo(() => (registry && !isPubkey(query) ? searchRegistry(registry, query) : []), [registry, query])
 

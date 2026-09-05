@@ -126,21 +126,20 @@ fn click_rules_slot_and_daily_cap() {
     start(&mut w, &owner, &session, false).unwrap();
     let treasury_before = w.svm.get_balance(&w.admin.pubkey()).unwrap();
     assert!(treasury_before > 0);
-    // session key clicks
+    // session key clicks: three in the same second land, the fourth is rejected
     w.tick(1, 1);
-    w.click(&session, &owner.pubkey(), None).unwrap();
-    // same slot again: rejected
-    assert!(w.click(&session, &owner.pubkey(), None).unwrap_err().contains("ClickTooFast") || true);
+    for _ in 0..3 { w.click(&session, &owner.pubkey(), None).unwrap(); w.tick(1, 0); }
+    assert!(w.click(&session, &owner.pubkey(), None).is_err(), "fourth click in one second must fail");
     let p = w.player(&owner.pubkey());
-    assert_eq!(p.lifetime_clicks, 1);
-    assert_eq!(p.cookies_milli, 1_000);
+    assert_eq!(p.lifetime_clicks, 3);
+    assert_eq!(p.cookies_milli, 3_000);
     // a stranger cannot click for this player
     let stranger = Keypair::new();
     w.svm.airdrop(&stranger.pubkey(), 1_000_000_000).unwrap();
     w.tick(1, 1);
     assert!(w.click(&stranger, &owner.pubkey(), None).is_err());
-    // cap of 5 per day (test config)
-    for _ in 0..4 { w.tick(1, 1); w.click(&session, &owner.pubkey(), None).unwrap(); }
+    // cap of 5 per day (test config): three landed already, two more, then the sixth fails
+    for _ in 0..2 { w.tick(1, 1); w.click(&session, &owner.pubkey(), None).unwrap(); }
     w.tick(1, 1);
     assert!(w.click(&session, &owner.pubkey(), None).is_err(), "sixth click of the day must fail");
     assert_eq!(w.player(&owner.pubkey()).lifetime_clicks, 5);

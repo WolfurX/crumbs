@@ -230,3 +230,25 @@ h1, h2, .brand, .tile .value { font-family: var(--display); }
 .roadmap-list li:last-child { border-bottom: 0; }
 .roadmap-list li > svg { font-size: 1.15rem; color: var(--accent); margin-top: 0.15rem; }
 .roadmap-list p { margin-top: 0.15rem; max-width: 70ch; }
+
+/* clicker */
+.game-grid { display: grid; grid-template-columns: 1fr 260px; gap: 1.5rem; }
+@media (max-width: 720px) { .game-grid { grid-template-columns: 1fr; } }
+.game-main { display: grid; gap: .8rem; justify-items: center; text-align: center; }
+.counter .big { font-family: var(--display); font-size: clamp(2rem, 6vw, 3.2rem); font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+.cookie-btn { background: none; border: 0; padding: 0; cursor: pointer; width: min(320px, 70vw); border-radius: 50%; transition: transform .12s var(--ease); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.cookie-btn:active { transform: scale(.94); }
+.cookie-btn:disabled { opacity: .45; cursor: default; transform: none; }
+.cookie-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
+.cookie-big { width: 100%; height: auto; display: block; }
+@media (hover: hover) and (pointer: fine) { .cookie-btn:not(:disabled):hover { transform: scale(1.02); } }
+.game-side h3 { font-size: .95rem; margin-bottom: .3rem; }
+.feed { display: inline-flex; gap: 3px; align-items: center; }
+.fdot { width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong); display: inline-block; }
+.fdot.ok { background: var(--accent); } .fdot.fail { background: var(--bad); } .fdot.sent { background: var(--ink-2); animation: pulse 1.2s ease-in-out infinite; }
+.bakers { display: grid; }
+.baker { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem 0; border-bottom: 1px solid var(--line); }
+.baker:last-child { border-bottom: 0; }
+.baker .btn { min-width: 6.5rem; justify-content: center; font-variant-numeric: tabular-nums; }
+tr.me td { background: var(--accent-soft); }
+.rules { display: grid; }

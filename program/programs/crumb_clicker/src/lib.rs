@@ -15,7 +15,7 @@ use crumb_emission::{Distributor, Emission};
 pub use error::*;
 pub use state::*;
 
-declare_id!("G86X3J8uUmYfaZawC2FDAjgVNMfyRgpUjyLQNQGxYfTR");
+declare_id!("7aPZt6exe1H2A1fnSqV2kV2ZHpgQWtKe4LYEXv1x3Lqi");
 
 #[program]
 pub mod crumb_clicker {
@@ -87,14 +87,20 @@ pub mod crumb_clicker {
         Ok(())
     }
 
-    /// One click, one transaction. One per slot, at most `click_cap_per_day` counted per day.
+    /// One click, one transaction. Three per second, at most `click_cap_per_day` counted per day.
     pub fn click(ctx: Context<Act>, day: u64) -> Result<()> {
         let clock = Clock::get()?;
         require!(day == day_index(clock.unix_timestamp), ClickerError::WrongDay);
         let a = &mut *ctx.accounts;
         touch(&mut a.player, &mut a.game, &mut a.today, ctx.bumps.today, a.prev_day.as_mut(), &a.emission, &a.distributor, clock.unix_timestamp)?;
         let p = &mut a.player;
-        require!(p.last_click_slot != clock.slot, ClickerError::ClickTooFast);
+        if p.last_click_ts == clock.unix_timestamp {
+            require!(p.clicks_this_sec < CLICKS_PER_SECOND, ClickerError::ClickTooFast);
+            p.clicks_this_sec += 1;
+        } else {
+            p.last_click_ts = clock.unix_timestamp;
+            p.clicks_this_sec = 1;
+        }
         let today = day_index(clock.unix_timestamp);
         if p.click_day != today {
             p.click_day = today;
@@ -102,7 +108,6 @@ pub mod crumb_clicker {
         }
         require!(p.clicks_today < a.game.click_cap_per_day, ClickerError::DailyCapReached);
         p.clicks_today += 1;
-        p.last_click_slot = clock.slot;
         let gain = p.click_power_milli();
         p.cookies_milli = p.cookies_milli.checked_add(gain).ok_or(ClickerError::Overflow)?;
         p.lifetime_cookies_milli += gain as u128;

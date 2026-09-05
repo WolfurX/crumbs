@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 pub enum ClickerError {
     #[msg("only the owner or the session key may act for this player")]
     Unauthorized,
-    #[msg("one click per slot")]
+    #[msg("too fast: three clicks per second")]
     ClickTooFast,
     #[msg("daily click cap reached, come back tomorrow")]
     DailyCapReached,

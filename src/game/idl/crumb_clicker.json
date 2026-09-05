@@ -1,0 +1,1371 @@
+{
+  "address": "7aPZt6exe1H2A1fnSqV2kV2ZHpgQWtKe4LYEXv1x3Lqi",
+  "metadata": {
+    "name": "crumb_clicker",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "buy",
+      "docs": [
+        "Buy `count` units of a tier, one after the other at rising prices."
+      ],
+      "discriminator": [
+        102,
+        6,
+        61,
+        18,
+        1,
+        218,
+        235,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "game",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player.owner",
+                "account": "Player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "today",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "day"
+              }
+            ]
+          }
+        },
+        {
+          "name": "prev_day",
+          "docs": [
+            "The record for `player.pending_day`, required when a finished day is still unsettled."
+          ],
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "prev_day.day",
+                "account": "Day"
+              }
+            ]
+          }
+        },
+        {
+          "name": "emission",
+          "relations": [
+            "game",
+            "distributor"
+          ]
+        },
+        {
+          "name": "distributor"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "day",
+          "type": "u64"
+        },
+        {
+          "name": "tier",
+          "type": "u8"
+        },
+        {
+          "name": "count",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "claim",
+      "docs": [
+        "Mint every claimable CRUMB to the owner's wallet."
+      ],
+      "discriminator": [
+        62,
+        198,
+        214,
+        193,
+        213,
+        159,
+        108,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "game",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player.owner",
+                "account": "Player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "today",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "day"
+              }
+            ]
+          }
+        },
+        {
+          "name": "prev_day",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "prev_day.day",
+                "account": "Day"
+              }
+            ]
+          }
+        },
+        {
+          "name": "emission",
+          "writable": true,
+          "relations": [
+            "game",
+            "distributor"
+          ]
+        },
+        {
+          "name": "distributor",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "relations": [
+            "player"
+          ]
+        },
+        {
+          "name": "minter",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "crumb_mint",
+          "writable": true,
+          "relations": [
+            "game"
+          ]
+        },
+        {
+          "name": "owner_crumb",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "crumb_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "emission_program",
+          "address": "C8NRjLU9ajS5okBSbDhMBXsF2naVGm82y6g3hdefTQcY"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "day",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "click",
+      "docs": [
+        "One click, one transaction. Three per second, at most `click_cap_per_day` counted per day."
+      ],
+      "discriminator": [
+        11,
+        147,
+        179,
+        178,
+        145,
+        118,
+        45,
+        186
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "game",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player.owner",
+                "account": "Player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "today",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "day"
+              }
+            ]
+          }
+        },
+        {
+          "name": "prev_day",
+          "docs": [
+            "The record for `player.pending_day`, required when a finished day is still unsettled."
+          ],
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "prev_day.day",
+                "account": "Day"
+              }
+            ]
+          }
+        },
+        {
+          "name": "emission",
+          "relations": [
+            "game",
+            "distributor"
+          ]
+        },
+        {
+          "name": "distributor"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "day",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "init_game",
+      "discriminator": [
+        251,
+        46,
+        12,
+        208,
+        184,
+        148,
+        157,
+        73
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "game",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "minter",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "emission"
+        },
+        {
+          "name": "treasury"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "start_fee_lamports",
+          "type": "u64"
+        },
+        {
+          "name": "free_slots",
+          "type": "u64"
+        },
+        {
+          "name": "entry_burn_base",
+          "type": "u64"
+        },
+        {
+          "name": "click_cap_per_day",
+          "type": "u16"
+        },
+        {
+          "name": "pool_cookie_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "set_params",
+      "discriminator": [
+        27,
+        234,
+        178,
+        52,
+        147,
+        2,
+        187,
+        141
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "game"
+          ]
+        },
+        {
+          "name": "game",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "start_fee_lamports",
+          "type": "u64"
+        },
+        {
+          "name": "free_slots",
+          "type": "u64"
+        },
+        {
+          "name": "entry_burn_base",
+          "type": "u64"
+        },
+        {
+          "name": "click_cap_per_day",
+          "type": "u16"
+        },
+        {
+          "name": "pool_cookie_bps",
+          "type": "u16"
+        },
+        {
+          "name": "treasury",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_session",
+      "discriminator": [
+        156,
+        135,
+        126,
+        111,
+        184,
+        206,
+        194,
+        141
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "player"
+          ]
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "session",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "settle",
+      "docs": [
+        "Accrue idle production and settle a finished day into claimable CRUMB."
+      ],
+      "discriminator": [
+        175,
+        42,
+        185,
+        87,
+        144,
+        131,
+        102,
+        212
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "game",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player.owner",
+                "account": "Player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "today",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "day"
+              }
+            ]
+          }
+        },
+        {
+          "name": "prev_day",
+          "docs": [
+            "The record for `player.pending_day`, required when a finished day is still unsettled."
+          ],
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  97,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "prev_day.day",
+                "account": "Day"
+              }
+            ]
+          }
+        },
+        {
+          "name": "emission",
+          "relations": [
+            "game",
+            "distributor"
+          ]
+        },
+        {
+          "name": "distributor"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "day",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "start",
+      "docs": [
+        "Create the player account. Pays the start fee; past the free slots also burns CRUMB."
+      ],
+      "discriminator": [
+        62,
+        15,
+        117,
+        236,
+        47,
+        1,
+        89,
+        139
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "game",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "relations": [
+            "game"
+          ]
+        },
+        {
+          "name": "crumb_mint",
+          "writable": true,
+          "relations": [
+            "game"
+          ]
+        },
+        {
+          "name": "owner_crumb",
+          "docs": [
+            "Needed only once the free slots are used up."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "session",
+          "type": "pubkey"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Day",
+      "discriminator": [
+        132,
+        133,
+        176,
+        230,
+        205,
+        147,
+        21,
+        51
+      ]
+    },
+    {
+      "name": "Game",
+      "discriminator": [
+        27,
+        90,
+        166,
+        125,
+        74,
+        100,
+        121,
+        18
+      ]
+    },
+    {
+      "name": "Player",
+      "discriminator": [
+        205,
+        222,
+        112,
+        7,
+        165,
+        155,
+        206,
+        218
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "only the owner or the session key may act for this player"
+    },
+    {
+      "code": 6001,
+      "name": "ClickTooFast",
+      "msg": "too fast: three clicks per second"
+    },
+    {
+      "code": 6002,
+      "name": "DailyCapReached",
+      "msg": "daily click cap reached, come back tomorrow"
+    },
+    {
+      "code": 6003,
+      "name": "NotEnoughCookies",
+      "msg": "not enough cookies"
+    },
+    {
+      "code": 6004,
+      "name": "BadTier",
+      "msg": "unknown tier"
+    },
+    {
+      "code": 6005,
+      "name": "BadCount",
+      "msg": "count must be between 1 and 20"
+    },
+    {
+      "code": 6006,
+      "name": "WrongDay",
+      "msg": "the day record passed does not match"
+    },
+    {
+      "code": 6007,
+      "name": "SettleFirst",
+      "msg": "pending activity from a previous day must be settled first"
+    },
+    {
+      "code": 6008,
+      "name": "NothingToClaim",
+      "msg": "nothing to claim"
+    },
+    {
+      "code": 6009,
+      "name": "DayNotOver",
+      "msg": "the current day is not over yet"
+    },
+    {
+      "code": 6010,
+      "name": "Overflow",
+      "msg": "arithmetic overflow"
+    },
+    {
+      "code": 6011,
+      "name": "BadConfig",
+      "msg": "bad configuration value"
+    }
+  ],
+  "types": [
+    {
+      "name": "Day",
+      "docs": [
+        "One record per UTC day. Totals are final once the day is over, which is what claims rely on."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "day",
+            "type": "u64"
+          },
+          {
+            "name": "cookies_milli",
+            "type": "u128"
+          },
+          {
+            "name": "clicks",
+            "type": "u64"
+          },
+          {
+            "name": "pool",
+            "docs": [
+              "This game's CRUMB for the day, base units, snapshotted when the day record is created."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Distributor",
+      "docs": [
+        "A program (or wallet) allowed to mint CRUMB, keyed by the signer it mints with."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "emission",
+            "type": "pubkey"
+          },
+          {
+            "name": "signer",
+            "docs": [
+              "The key that must sign `mint`. For a game this is one of its PDAs."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "weight_bps",
+            "type": "u16"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "minted",
+            "type": "u64"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Emission",
+      "docs": [
+        "The one CRUMB emission schedule. Owns the mint authority."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_supply",
+            "docs": [
+              "Hard cap, base units (6 decimals)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "base_daily_pool",
+            "docs": [
+              "Daily pool while the first half of the supply is minted; halves per tranche."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "minted",
+            "docs": [
+              "Total minted through this program, base units."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_weight_bps",
+            "docs": [
+              "Sum of enabled distributor weights, must stay <= BPS."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "distributors",
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Game",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "emission",
+            "type": "pubkey"
+          },
+          {
+            "name": "crumb_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "start_fee_lamports",
+            "docs": [
+              "Lamports to the treasury on start, for every account."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "free_slots",
+            "docs": [
+              "Accounts beyond this many burn CRUMB to start."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "entry_burn_base",
+            "docs": [
+              "CRUMB burned by account number free_slots, base units. Rises 10% per 100 accounts after."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "click_cap_per_day",
+            "type": "u16"
+          },
+          {
+            "name": "pool_cookie_bps",
+            "docs": [
+              "Share of the daily pool split by cookies; the rest by counted clicks."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "players",
+            "type": "u64"
+          },
+          {
+            "name": "total_clicks",
+            "type": "u64"
+          },
+          {
+            "name": "total_cookies_milli",
+            "type": "u128"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "minter_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Player",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "session",
+            "docs": [
+              "Browser keypair allowed to click, buy and claim on the owner's behalf. Claims pay the owner."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "cookies_milli",
+            "type": "u64"
+          },
+          {
+            "name": "cps_milli",
+            "type": "u64"
+          },
+          {
+            "name": "owned",
+            "type": {
+              "array": [
+                "u16",
+                8
+              ]
+            }
+          },
+          {
+            "name": "lifetime_cookies_milli",
+            "type": "u128"
+          },
+          {
+            "name": "lifetime_clicks",
+            "type": "u64"
+          },
+          {
+            "name": "last_ts",
+            "type": "i64"
+          },
+          {
+            "name": "last_click_ts",
+            "docs": [
+              "Second of the last click and how many clicks landed in it; at most CLICKS_PER_SECOND."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "clicks_this_sec",
+            "type": "u8"
+          },
+          {
+            "name": "click_day",
+            "type": "u64"
+          },
+          {
+            "name": "clicks_today",
+            "type": "u16"
+          },
+          {
+            "name": "pending_day",
+            "docs": [
+              "Activity not yet settled into claimable CRUMB, attributed to `pending_day`."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "pending_cookies_milli",
+            "type": "u128"
+          },
+          {
+            "name": "pending_clicks",
+            "type": "u64"
+          },
+          {
+            "name": "claimable",
+            "type": "u64"
+          },
+          {
+            "name": "claimed",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}

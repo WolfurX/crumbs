@@ -7,7 +7,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-crumb_clicker = "G86X3J8uUmYfaZawC2FDAjgVNMfyRgpUjyLQNQGxYfTR"
+crumb_clicker = "7aPZt6exe1H2A1fnSqV2kV2ZHpgQWtKe4LYEXv1x3Lqi"
 crumb_emission = "C8NRjLU9ajS5okBSbDhMBXsF2naVGm82y6g3hdefTQcY"
 
 [provider]

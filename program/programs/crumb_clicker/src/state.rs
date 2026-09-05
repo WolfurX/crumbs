@@ -9,6 +9,9 @@ pub const SECONDS_PER_DAY: i64 = 86_400;
 /// Idle production is settled for at most this long away.
 pub const OFFLINE_CAP_S: i64 = 7 * 86_400;
 pub const BPS: u64 = 10_000;
+/// Clicks accepted per player per wall-clock second. Slots are ~450 ms, so this is roughly one per
+/// slot without punishing a click that lands in the same slot as the previous one.
+pub const CLICKS_PER_SECOND: u8 = 3;
 /// Cookies are stored in milli-cookies so a Cursor's 0.1 per second is an integer.
 pub const MILLI: u64 = 1_000;
 /// Every extra unit of a tier costs 15% more.
@@ -99,7 +102,9 @@ pub struct Player {
     pub lifetime_cookies_milli: u128,
     pub lifetime_clicks: u64,
     pub last_ts: i64,
-    pub last_click_slot: u64,
+    /// Second of the last click and how many clicks landed in it; at most CLICKS_PER_SECOND.
+    pub last_click_ts: i64,
+    pub clicks_this_sec: u8,
     pub click_day: u64,
     pub clicks_today: u16,
     /// Activity not yet settled into claimable CRUMB, attributed to `pending_day`.
