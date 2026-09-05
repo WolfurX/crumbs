@@ -26,6 +26,7 @@ export function explainGameError(e: unknown): string {
     const code = m[0].includes('0x') ? parseInt(m[1], 16) : parseInt(m[1], 10)
     if (CLICKER_ERRORS[code]) return CLICKER_ERRORS[code]
   }
+  if (/already been processed/i.test(msg)) return 'Duplicate transaction, skipped.'
   if (/insufficient lamports|insufficient funds/i.test(msg + logs)) return 'The session wallet is out of COOK. Top it up.'
   if (/Blockhash not found|block height exceeded/i.test(msg)) return 'Transaction expired, try again.'
   return msg.length > 140 ? msg.slice(0, 137) + '…' : msg

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
-import { Keypair, Transaction } from "@solana/web3.js"
+import { ComputeBudgetProgram, Keypair, Transaction } from '@solana/web3.js'
 import { GameClient, explainGameError } from '../game/client'
 import { createSession, exportSession, forgetSession, importSession, loadSession } from '../game/session'
 import { CRUMB_DECIMALS, MILLI, TIER_CPS_MILLI, TIER_LINES, TIER_NAMES, TIERS, dayIndex, tierPriceMilli } from '../game/constants'
@@ -49,6 +49,7 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
   const [optimistic, setOptimistic] = useState<bigint>(0n)
   const lastClick = useRef(0)
   const feedId = useRef(1)
+  const clickSeq = useRef(0)
   const syncAt = useRef(Date.now())
 
   const load = useCallback(async () => {
@@ -179,7 +180,10 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
     setOptimistic((o) => o + clickPower)
     pushFeed({ id, state: 'sent' })
     try {
-      const sig = await client.sendWithSession(session, [client.clickIx(session.publicKey, owner, player, now / 1000)])
+      // two clicks inside one blockhash window would be byte-identical and the second would be
+      // dropped as a duplicate; a varying compute limit makes every click its own transaction
+      const uniq = ComputeBudgetProgram.setComputeUnitLimit({ units: 60_000 + (clickSeq.current++ % 4096) })
+      const sig = await client.sendWithSession(session, [uniq, client.clickIx(session.publicKey, owner, player, now / 1000)])
       updateFeed(id, { sig: sig.signature })
       await client.confirm(sig)
       updateFeed(id, { state: 'ok' })
