@@ -3,7 +3,7 @@
 //        node scripts/e2e-snapshot.mjs
 import { connect, sleep } from './cdp.mjs'
 
-const cdp = await connect(Number(process.env.CDP_PORT ?? 9222), (t) => t.url.includes('/crumbs/'))
+const cdp = await connect(Number(process.env.CDP_PORT ?? 9222), (t) => t.url.includes(process.env.APP_MATCH ?? '/crumbs/'))
 const logs = []
 await cdp.send('Runtime.enable')
 await cdp.send('Log.enable')
