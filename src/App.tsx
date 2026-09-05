@@ -65,8 +65,7 @@ export default function App() {
       </div>
 
       <footer>
-        <span>Open source, no fees, nothing leaves your browser except signed transactions.</span>
-        <a href="https://github.com/WolfurX/crumbs" target="_blank" rel="noreferrer">Source</a>
+        <span>Utilities for Cookie Chain communities. No fees, no backend, your wallet signs every transaction.</span>
         <a href="https://cookiescan.io" target="_blank" rel="noreferrer">Cookiescan</a>
         <a href="https://hyperlane.cookiescan.io" target="_blank" rel="noreferrer">Bridge COOK</a>
         <a href="https://nightly.app" target="_blank" rel="noreferrer">Nightly wallet</a>
