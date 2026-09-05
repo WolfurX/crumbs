@@ -13,7 +13,7 @@ import { IconCookie, IconCopy, IconDownload, IconRefresh, IconUsers } from '../i
 const TOPUP_LAMPORTS = 100_000_000 // 0.1 COOK, about 20,000 clicks
 const CLICK_GAP_MS = 480 // the program takes two clicks per second
 
-interface Feed { id: number; state: 'sent' | 'ok' | 'fail'; note?: string; sig?: string }
+interface Feed { id: number; state: 'sent' | 'ok' | 'fail'; note?: string; sig?: string; at: number }
 
 const cookies = (milli: bigint) => Number(milli) / 1000
 const fmtCookies = (milli: bigint) => {
@@ -47,6 +47,7 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
   const [busy, setBusy] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
   const [optimistic, setOptimistic] = useState<bigint>(0n)
+  const [showHistory, setShowHistory] = useState(false)
   const lastClick = useRef(0)
   const feedId = useRef(1)
   const clickSeq = useRef(0)
@@ -178,7 +179,7 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
     }
     const id = feedId.current++
     setOptimistic((o) => o + clickPower)
-    pushFeed({ id, state: 'sent' })
+    pushFeed({ id, state: 'sent', at: Date.now() })
     try {
       // two clicks inside one blockhash window would be byte-identical and the second would be
       // dropped as a duplicate; a varying compute limit makes every click its own transaction
@@ -274,7 +275,26 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
               </span>
             </div>
             {error && <p className="err small">{error}</p>}
-            {feed.find((f) => f.state === 'fail')?.note && <p className="muted small">Last miss: {feed.find((f) => f.state === 'fail')!.note}</p>}
+            {feed.length > 0 && (
+              <div className="history">
+                <div className="row between small">
+                  <button className="btn quiet sm" onClick={() => setShowHistory((v) => !v)}>{showHistory ? 'Hide click history' : `Click history (${feed.length})`}</button>
+                  {session && <a className="muted" href={addressUrl(session.publicKey.toBase58())} target="_blank" rel="noreferrer">All clicks on Cookiescan</a>}
+                </div>
+                {showHistory && (
+                  <ul className="history-list">
+                    {feed.map((f) => (
+                      <li key={f.id}>
+                        <span className={`dot${f.state === 'ok' ? ' ok' : f.state === 'fail' ? ' bad' : ' live'}`} />
+                        <span className="muted num">{new Date(f.at).toLocaleTimeString()}</span>
+                        <span>{f.state === 'ok' ? 'Confirmed' : f.state === 'fail' ? f.note ?? 'Failed' : 'Sending'}</span>
+                        {f.sig ? <a className="mono small" href={txUrl(f.sig)} target="_blank" rel="noreferrer">{shortAddr(f.sig, 6, 6)}</a> : <span className="muted small">no signature</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
           <aside className="game-side">

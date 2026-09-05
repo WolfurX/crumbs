@@ -252,3 +252,10 @@ h1, h2, .brand, .tile .value { font-family: var(--display); }
 .baker .btn { min-width: 6.5rem; justify-content: center; font-variant-numeric: tabular-nums; }
 tr.me td { background: var(--accent-soft); }
 .rules { display: grid; }
+
+/* click history */
+.history { width: 100%; text-align: left; }
+.history-list { list-style: none; margin: .4rem 0 0; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); max-height: 260px; overflow: auto; }
+.history-list li { display: grid; grid-template-columns: 1rem 5.5rem 1fr auto; gap: .6rem; align-items: center; padding: .35rem .6rem; border-bottom: 1px solid var(--line); font-size: .85rem; }
+.history-list li:last-child { border-bottom: 0; }
+.history-list .dot { margin: 0; }
