@@ -252,6 +252,10 @@ h1, h2, .brand, .tile .value { font-family: var(--display); }
 .baker .btn { min-width: 6.5rem; justify-content: center; font-variant-numeric: tabular-nums; }
 tr.me td { background: var(--accent-soft); }
 .rules { display: grid; }
+.rule { display: grid; grid-template-columns: 7.5rem 1fr; gap: 0.25rem 1rem; padding: 0.55rem 0; border-bottom: 1px solid var(--line); }
+.rule:last-child { border-bottom: 0; }
+.rule b { color: var(--ink); }
+@media (max-width: 560px) { .rule { grid-template-columns: 1fr; gap: 0.15rem; } }
 
 /* click history */
 .history { width: 100%; text-align: left; }
@@ -267,3 +271,10 @@ tr.me td { background: var(--accent-soft); }
 @keyframes pop { from { opacity: 1; translate: 0 0; } to { opacity: 0; translate: 0 -56px; } }
 .away { max-width: 40ch; }
 @media (prefers-reduced-motion: reduce) { .pop { animation: none; opacity: 0; } }
+
+/* six tabs do not fit one row on a phone: a 3x2 grid of outlined tabs instead of a clipped strip */
+@media (max-width: 560px) {
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; border-bottom: 0; }
+  .tab { justify-content: center; border: 1px solid var(--line); border-radius: var(--radius); padding: 0.5rem 0.4rem; margin-bottom: 0; font-size: 0.9rem; }
+  .tab[aria-selected="true"] { border-color: var(--accent); background: var(--surface); }
+}
