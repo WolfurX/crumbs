@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { BatchList } from './BatchList'
+import { ArtCleanup } from './Art'
+import { IconBrush, IconRefresh } from '../icons'
 import { closeItem, fetchOwnedAccounts, packCleanup, revokeItem, type OwnedAccount } from '../lib/revoke'
 import { loadRegistry, type TokenInfo } from '../lib/tokens'
 import { runBatches, type Batch } from '../lib/txs'
@@ -73,9 +75,13 @@ export function Cleanup() {
 
   if (!wallet.publicKey) {
     return (
-      <section className="card">
-        <h2>Cleanup</h2>
-        <p className="lead">Revoke token delegates and close empty token accounts to get their rent back. Connect a wallet to start.</p>
+      <section className="card empty">
+        <div>
+          <h2>Cleanup</h2>
+          <p className="lead">Revoke token delegates you do not recognise and close empty token accounts to get their rent back. Nothing is skimmed.</p>
+          <p className="muted small">Connect a wallet to start.</p>
+        </div>
+        <ArtCleanup />
       </section>
     )
   }
@@ -88,7 +94,7 @@ export function Cleanup() {
             <h2>Delegations</h2>
             <p className="lead">Accounts where another address may move your tokens. Revoke what you do not recognise.</p>
           </div>
-          <button className="btn sm" onClick={load} disabled={accounts === null}>Refresh</button>
+          <button className="btn sm" onClick={load} disabled={accounts === null}><IconRefresh /> Refresh</button>
         </div>
         {accounts === null ? (
           <p className="muted">Loading token accounts…</p>
@@ -147,7 +153,7 @@ export function Cleanup() {
 
         <div className="row" style={{ marginTop: '1rem' }}>
           <button className="btn primary" disabled={running || picked.size === 0 || !wallet.signTransaction} onClick={run}>
-            {running ? 'Working…' : `Sign and run ${fmtInt(picked.size)} action${picked.size === 1 ? '' : 's'}`}
+            <IconBrush /> {running ? 'Working…' : `Sign and run ${fmtInt(picked.size)} action${picked.size === 1 ? '' : 's'}`}
           </button>
           {reclaim > 0n && <span className="ink2">Reclaims {fmtAmount(reclaim, COOK_DECIMALS)} COOK</span>}
           {error && <span className="err">{error}</span>}

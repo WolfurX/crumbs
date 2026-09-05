@@ -3,6 +3,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { WalletReadyState } from '@solana/wallet-adapter-base'
 import { shortAddr, fmtAmount } from '../lib/format'
 import { COOK_DECIMALS, addressUrl } from '../lib/chain'
+import { IconCopy, IconExternalLink, IconPlugConnected, IconWallet } from '../icons'
 
 /** Connect menu over the Wallet Standard: every installed wallet shows up, Nightly first. */
 export function WalletButton() {
@@ -50,9 +51,9 @@ export function WalletButton() {
         </button>
         {open && (
           <div className="menu">
-            <button onClick={() => navigator.clipboard.writeText(publicKey.toBase58()).then(() => setOpen(false))}>Copy address</button>
-            <button onClick={() => window.open(addressUrl(publicKey.toBase58()), '_blank')}>View on Cookiescan</button>
-            <button onClick={() => disconnect().then(() => setOpen(false))}>Disconnect</button>
+            <button onClick={() => navigator.clipboard.writeText(publicKey.toBase58()).then(() => setOpen(false))}><IconCopy /> Copy address</button>
+            <button onClick={() => window.open(addressUrl(publicKey.toBase58()), '_blank')}><IconExternalLink /> View on Cookiescan</button>
+            <button onClick={() => disconnect().then(() => setOpen(false))}><IconPlugConnected /> Disconnect</button>
           </div>
         )}
       </div>
@@ -62,7 +63,7 @@ export function WalletButton() {
   return (
     <div className="wallet" ref={ref}>
       <button className="btn primary" disabled={connecting} onClick={() => setOpen((o) => !o)}>
-        {connecting ? 'Connecting…' : 'Connect wallet'}
+        <IconWallet /> {connecting ? 'Connecting…' : 'Connect wallet'}
       </button>
       {open && (
         <div className="menu">

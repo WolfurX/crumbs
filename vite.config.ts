@@ -2,8 +2,11 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// GitHub Pages serves from /crumbs/, Vercel from the root. Vercel sets VERCEL=1 at build time.
+const base = process.env.VERCEL ? '/' : '/crumbs/'
+
 export default defineConfig({
-  base: '/crumbs/',
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -12,12 +15,12 @@ export default defineConfig({
       manifest: {
         name: 'Crumbs',
         short_name: 'Crumbs',
-        description: 'Holder snapshots, airdrops and token account cleanup on Cookie Chain.',
+        description: 'Utilities for Cookie Chain: holder snapshots, airdrops, token account cleanup.',
         theme_color: '#12100c',
         background_color: '#12100c',
         display: 'standalone',
-        start_url: '/crumbs/',
-        scope: '/crumbs/',
+        start_url: base,
+        scope: base,
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -26,7 +29,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        navigateFallback: '/crumbs/index.html',
+        navigateFallback: `${base}index.html`,
         runtimeCaching: [
           {
             // token registry: fast from cache, refreshed in the background

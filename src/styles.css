@@ -114,3 +114,41 @@ tr:last-child td { border-bottom: 0; }
 .wallet { position: relative; }
 footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.85rem; display: flex; gap: 1rem; flex-wrap: wrap; }
 @media (max-width: 560px) { .bar-row { grid-template-columns: 84px 1fr 56px; } .top { height: 56px; } .tile .value { font-size: 1.15rem; } }
+
+/* hero */
+.hero { display: grid; gap: 0.35rem; padding: 1.6rem 0 0.4rem; }
+.hero h1 { font-size: clamp(1.5rem, 3.6vw, 2.1rem); line-height: 1.15; letter-spacing: -0.02em; }
+.hero p { color: var(--ink-2); max-width: 44ch; }
+.tab { display: inline-flex; align-items: center; gap: 0.4rem; }
+.tab svg { font-size: 1.05rem; }
+.btn svg { font-size: 1.05em; }
+.btn.icon { padding: 0.5rem; }
+
+/* panels enter from just below so a tab switch reads as a move, not a repaint */
+.panel { animation: enter 0.32s var(--ease) both; }
+@keyframes enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.menu { animation: enter 0.18s var(--ease) both; }
+
+/* empty states */
+.empty { display: grid; grid-template-columns: 1fr minmax(180px, 300px); gap: 1rem 2rem; align-items: center; }
+.empty .art { width: 100%; height: auto; }
+@media (max-width: 620px) { .empty { grid-template-columns: 1fr; } .empty .art { max-width: 260px; margin: 0 auto; } }
+.art-crumb, .art-float { animation: drift 5.5s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+@keyframes drift { from { transform: translateY(-3px); } to { transform: translateY(3px); } }
+
+/* bars grow from the baseline on first paint so the ranking reads as it appears */
+.bar-fill { animation: grow 0.6s var(--ease) both; transform-origin: left center; }
+@keyframes grow { from { transform: scaleX(0); } }
+
+/* confirmed batches draw their check */
+.tick { width: 14px; height: 14px; margin-right: 0.45rem; vertical-align: -2px; color: var(--accent); }
+.tick path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: draw 0.45s var(--ease) forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .panel, .menu, .bar-fill, .art-crumb, .art-float, .tick path { animation: none; }
+  .tick path { stroke-dashoffset: 0; }
+  .spin { animation: none; }
+}

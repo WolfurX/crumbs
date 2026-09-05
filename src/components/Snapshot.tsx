@@ -7,6 +7,8 @@ import { loadRegistry, searchRegistry, type TokenInfo } from '../lib/tokens'
 import { COOK_MINT, TOKEN_2022_PROGRAM, TOKEN_PROGRAM, addressUrl, isPubkey } from '../lib/chain'
 import { fmtAmount, fmtInt, fmtPct, shortAddr } from '../lib/format'
 import { HolderChart } from './HolderChart'
+import { ArtSnapshot } from './Art'
+import { IconAperture, IconDownload, IconParachute } from '../icons'
 
 export interface SnapshotResult {
   token: TokenInfo
@@ -92,7 +94,8 @@ export function Snapshot({ result, onResult, onAirdrop }: Props) {
 
   return (
     <>
-      <section className="card">
+      <section className={`card${result ? '' : ' empty'}`}>
+        <div>
         <h2>Holder snapshot</h2>
         <p className="lead">Every wallet holding a token, straight from the Cookiescan index. Filter it, export it, airdrop to it.</p>
         <div className="field" style={{ position: 'relative' }}>
@@ -126,11 +129,13 @@ export function Snapshot({ result, onResult, onAirdrop }: Props) {
         </div>
         <div className="row" style={{ marginTop: '0.75rem' }}>
           <button className="btn primary" disabled={!!busy || !isPubkey(query)} onClick={() => take(query.trim())}>
-            Take snapshot
+            <IconAperture /> Take snapshot
           </button>
           {busy && <span className="muted">{busy}</span>}
           {error && <span className="err">{error}</span>}
         </div>
+        </div>
+        {!result && <ArtSnapshot />}
       </section>
 
       {result && view && (
@@ -148,8 +153,8 @@ export function Snapshot({ result, onResult, onAirdrop }: Props) {
               </div>
             </div>
             <div className="row">
-              <button className="btn" onClick={exportCsv}>Export CSV</button>
-              <button className="btn primary" onClick={onAirdrop}>Airdrop to {fmtInt(view.rows.length)} holders</button>
+              <button className="btn" onClick={exportCsv}><IconDownload /> Export CSV</button>
+              <button className="btn primary" onClick={onAirdrop}><IconParachute /> Airdrop to {fmtInt(view.rows.length)} holders</button>
             </div>
           </div>
 

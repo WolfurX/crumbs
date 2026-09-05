@@ -1,8 +1,8 @@
 # Crumbs
 
-Holder snapshots, airdrops and token account cleanup for [Cookie Chain](https://www.cookiechain.wtf). An installable web app that runs entirely in your browser: reads come from the public Cookie Chain RPC and the Cookiescan DAS index, writes are transactions your own wallet signs. No backend, no fees, no keys leave your device.
+The utility app for [Cookie Chain](https://www.cookiechain.wtf). Holder snapshots, airdrops and token account cleanup today, more tools as the chain grows. Installable web app, runs entirely in your browser: reads come from the public Cookie Chain RPC and the Cookiescan DAS index, writes are transactions your own wallet signs. No backend, no fees, no keys leave your device.
 
-Live: https://wolfurx.github.io/crumbs/
+Live: https://crumbs-cookie.vercel.app/ (mirror: https://wolfurx.github.io/crumbs/)
 
 ![Holder snapshot of bCOOK](docs/snapshot.png)
 
@@ -20,7 +20,7 @@ Live: https://wolfurx.github.io/crumbs/
 
 1. Install [Nightly](https://nightly.app) and switch its network to **Cookie** (network switcher, top right, under SVM). Nightly ships Cookie Chain as a built-in network, so no custom RPC is needed. Any wallet that speaks the Wallet Standard will connect, but a wallet pointed at Solana mainnet will simulate Cookie Chain transactions against the wrong chain and refuse to sign them.
 2. Get a little COOK for fees. Bridge from Solana at https://hyperlane.cookiescan.io, or swap on a Cookie Chain DEX. A 100-recipient airdrop costs well under 0.01 COOK in fees plus about 0.002 COOK of rent per recipient who has no token account yet.
-3. Open https://wolfurx.github.io/crumbs/ and install it from the browser menu if you want it as an app. The shell and the token registry are cached for offline use.
+3. Open https://crumbs-cookie.vercel.app/ and install it from the browser menu if you want it as an app. The shell and the token registry are cached for offline use.
 
 ## How it works
 
@@ -41,10 +41,18 @@ npm run preview
 
 `scripts/engine-test.ts` runs the airdrop and cleanup code against the live chain with a local keypair (build it with `npx vite build --config vite.engine.config.ts`). `scripts/e2e-snapshot.mjs` drives the built app in a headless Chromium over the DevTools protocol.
 
-Deployed from `main` by GitHub Actions to GitHub Pages.
+Deployed from `main` to Vercel (production) and, as a mirror, to GitHub Pages by Actions. The base path follows the host: `/` on Vercel, `/crumbs/` on Pages.
+
+## Roadmap
+
+Crumbs is meant to be the toolbox every Cookie Chain community reaches for. Next in line:
+
+- Peer-to-peer token swaps by link: both sides sign one transaction, no escrow program, no counterparty risk.
+- `.cook` names wherever an address is accepted.
+- Holder snapshots of NFT collections.
+
+Suggestions and bug reports go in the issues.
 
 ## Credits
 
-Built for the Cookie Chain community. Reads run on the Cookiescan DAS API and RPC. The tool shapes owe a debt to Famous Fox Federation's Snapshot, FoxyShare, FoxySend and Revoker on Solana.
-
-MIT licensed.
+Built for the Cookie Chain community. Reads run on the Cookiescan DAS API and RPC; the chain's built-in token programs do the rest. MIT licensed.

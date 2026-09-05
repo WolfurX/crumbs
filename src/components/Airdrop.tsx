@@ -3,6 +3,8 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey } from '@solana/web3.js'
 import type { SnapshotResult } from './Snapshot'
 import { BatchList } from './BatchList'
+import { ArtAirdrop } from './Art'
+import { IconDownload, IconParachute, IconRefresh } from '../icons'
 import { planAirdrop, parseRecipientList, proRata, resolveAsset, type AirdropPlan, type Asset, type Recipient } from '../lib/airdrop'
 import { fetchOwnedAccounts, type OwnedAccount } from '../lib/revoke'
 import { loadRegistry, type TokenInfo } from '../lib/tokens'
@@ -148,9 +150,13 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
 
   if (!wallet.publicKey) {
     return (
-      <section className="card">
-        <h2>Airdrop</h2>
-        <p className="lead">Send COOK or any token to a holder snapshot or a pasted list. Connect a wallet to start.</p>
+      <section className="card empty">
+        <div>
+          <h2>Airdrop</h2>
+          <p className="lead">Send COOK or any token to a holder snapshot or a pasted list. Same amount for everyone or pro-rata, batched into as few transactions as fit, one wallet prompt.</p>
+          <p className="muted small">Connect a wallet to start.</p>
+        </div>
+        <ArtAirdrop />
       </section>
     )
   }
@@ -244,12 +250,12 @@ export function Airdrop({ snapshot, onNeedSnapshot }: Props) {
           <div className="row" style={{ margin: '1rem 0' }}>
             {!done && !canRetry && (
               <button className="btn primary" disabled={running || (shortfall?.length ?? 0) > 0 || !wallet.signTransaction} onClick={() => send(false)}>
-                {running ? 'Working…' : `Sign and send ${plan.batches.length} transaction${plan.batches.length > 1 ? 's' : ''}`}
+                <IconParachute /> {running ? 'Working…' : `Sign and send ${plan.batches.length} transaction${plan.batches.length > 1 ? 's' : ''}`}
               </button>
             )}
-            {canRetry && !running && <button className="btn primary" onClick={() => send(true)}>Retry failed</button>}
+            {canRetry && !running && <button className="btn primary" onClick={() => send(true)}><IconRefresh /> Retry failed</button>}
             {done && <span className="ink2">Done. {fmtInt(sentRecipients)} wallet{sentRecipients === 1 ? '' : 's'} received {plan.asset.symbol}.</span>}
-            {batches.some((b) => b.signature) && <button className="btn" onClick={exportResults}>Export results</button>}
+            {batches.some((b) => b.signature) && <button className="btn" onClick={exportResults}><IconDownload /> Export results</button>}
           </div>
           <BatchList batches={batches} unit="recipients" />
           {batches.some((b) => b.status === 'signing') && <p className="small muted" style={{ marginTop: '0.6rem' }}>Waiting on the wallet. If it shows a failed simulation, its network is not Cookie Chain: in Nightly open the network switcher, pick Cookie, then retry.</p>}
