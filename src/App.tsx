@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { WalletButton } from './components/WalletButton'
 import { Snapshot, type SnapshotResult } from './components/Snapshot'
 import { Airdrop } from './components/Airdrop'
@@ -11,7 +11,11 @@ import { Crumb } from './components/Crumb'
 import { Swap } from './components/Swap'
 import { offerFromHash } from './swap/offer'
 import { useInstallPrompt } from './lib/install'
+import { webglOk } from './lib/webgl'
 import { IconAperture, IconBrush, IconCoins, IconCookie, IconDownload, IconLink, IconParachute } from './icons'
+
+const HeroScene = lazy(() => import('./components/HeroScene'))
+const WIDE = '(min-width: 900px)'
 
 type Tab = 'snapshot' | 'airdrop' | 'cleanup' | 'swap' | 'clicker' | 'crumb'
 
@@ -29,6 +33,15 @@ export default function App() {
   const [snapshot, setSnapshot] = useState<SnapshotResult | null>(null)
   const [presetMint, setPresetMint] = useState<string | null>(null)
   const install = useInstallPrompt()
+  // the hero art only shows from 900px, so the 3D chunk is fetched only where it will be seen
+  const [wide, setWide] = useState(() => matchMedia(WIDE).matches)
+  useEffect(() => {
+    const mq = matchMedia(WIDE)
+    const on = () => setWide(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  const heroImg = <img src={`${import.meta.env.BASE_URL}hero.svg`} alt="" width={480} height={270} loading="eager" />
   const snapshotOf = (mint: string) => {
     setPresetMint(mint)
     setTab('snapshot')
@@ -57,7 +70,7 @@ export default function App() {
           <p>Snapshot holders, airdrop tokens, tidy your wallet, and play the clicker that mints CRUMB. Runs in your browser, installs as an app, takes no fee.</p>
         </div>
         <div className="hero-art" aria-hidden="true">
-          <img src={`${import.meta.env.BASE_URL}hero.svg`} alt="" width={480} height={270} loading="eager" />
+          {wide && webglOk() ? <Suspense fallback={heroImg}><HeroScene /></Suspense> : heroImg}
         </div>
       </section>
 
