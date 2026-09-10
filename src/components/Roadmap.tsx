@@ -1,12 +1,6 @@
-import { IconHash, IconLink, IconUsers } from '../icons'
+import { IconLink, IconUsers } from '../icons'
 
 const ITEMS = [
-  {
-    icon: IconHash,
-    name: '.cook names everywhere',
-    text: 'Type a .cook name wherever Crumbs asks for an address: recipients, swap counterparties, the leaderboard.',
-    status: 'in progress',
-  },
   {
     icon: IconUsers,
     name: 'NFT collection snapshots',

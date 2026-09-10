@@ -4,7 +4,9 @@ import { Keypair, PublicKey, Transaction } from '@solana/web3.js'
 import { buildOfferTx, cancelIx, createNonceIxs, decodeOffer, encodeOffer, offerFromHash, offerIsOpen, offerLink, readNonce, rememberNonce, resolveLeg, savedNonce, simulateOffer, type Leg, type Offer } from '../swap/offer'
 import { fetchOwnedAccounts, type OwnedAccount } from '../lib/revoke'
 import { loadRegistry, searchRegistry, type TokenInfo } from '../lib/tokens'
-import { COOK_DECIMALS, COOK_MINT, addressUrl, isPubkey, txUrl } from '../lib/chain'
+import { COOK_DECIMALS, COOK_MINT, isPubkey, txUrl } from '../lib/chain'
+import { looksLikeName, resolveName, usePrimaryNames } from '../lib/names'
+import { Addr } from './Addr'
 import { fmtAmount, shortAddr } from '../lib/format'
 import { explainError } from '../lib/txs'
 import { toast } from './Toast'
@@ -64,6 +66,7 @@ export function Swap() {
     return opts
   }, [owned, registry, cookBalance])
   const getSuggestions = useMemo(() => (isPubkey(getQuery) ? [] : searchRegistry(registry, getQuery, 6)), [registry, getQuery])
+  const names = usePrimaryNames(connection, [incoming?.offer?.maker.toBase58(), made?.offer.taker.toBase58()].filter((x): x is string => !!x))
   const sym = (mint: string) => (mint === COOK_MINT ? 'COOK' : registry.get(mint)?.symbol || shortAddr(mint, 4, 4))
 
   async function signAndSend(tx: Transaction, extraSigners: Keypair[] = []) {
@@ -96,8 +99,14 @@ export function Swap() {
     setError(null)
     setMade(null)
     try {
-      if (!isPubkey(taker)) throw new Error('Enter the counterparty wallet address')
-      const takerPk = new PublicKey(taker.trim())
+      let takerPk: PublicKey
+      if (isPubkey(taker)) takerPk = new PublicKey(taker.trim())
+      else if (looksLikeName(taker)) {
+        setBusy('Resolving the name…')
+        const found = await resolveName(connection, taker)
+        if (!found) throw new Error(`${taker.trim()} is not a registered .cook name`)
+        takerPk = found
+      } else throw new Error('Enter the counterparty wallet address or .cook name')
       if (takerPk.equals(owner)) throw new Error('The counterparty is you')
       const mintB = isPubkey(getQuery) ? getQuery.trim() : getMint
       if (!mintB) throw new Error('Pick the token you want')
@@ -173,7 +182,7 @@ export function Swap() {
               <div className="tiles" style={{ margin: '.75rem 0' }}>
                 <div className="tile"><div className="label">You receive</div><div className="value num">{legText(incoming.offer.give)}</div></div>
                 <div className="tile"><div className="label">You send</div><div className="value num">{legText(incoming.offer.get)}</div></div>
-                <div className="tile"><div className="label">From</div><div className="value mono" style={{ fontSize: '1rem' }}>{shortAddr(incoming.offer.maker.toBase58(), 6, 6)}</div></div>
+                <div className="tile"><div className="label">From</div><div className="value mono" style={{ fontSize: '1rem' }}>{names.get(incoming.offer.maker.toBase58()) ?? shortAddr(incoming.offer.maker.toBase58(), 6, 6)}</div></div>
                 <div className="tile"><div className="label">Status</div><div className="value" style={{ fontSize: '1rem' }}>{incoming.open === undefined ? 'checking…' : !incoming.open ? 'taken or cancelled' : incoming.sim?.ok ? 'open, ready' : 'open, would fail'}</div></div>
               </div>
               {incoming.sim && !incoming.sim.ok && <p className="err small">{incoming.sim.reason}</p>}
@@ -222,7 +231,7 @@ export function Swap() {
             </div>
             <label className="field" style={{ marginTop: '.8rem' }}>
               <span>Counterparty wallet</span>
-              <input className="input mono" placeholder="The wallet that will take this offer" value={taker} onChange={(e) => setTaker(e.target.value)} spellCheck={false} />
+              <input className="input mono" placeholder="The wallet that will take this offer: address or .cook name" value={taker} onChange={(e) => setTaker(e.target.value)} spellCheck={false} />
             </label>
             <div className="row" style={{ marginTop: '1rem' }}>
               <button className="btn primary" disabled={!!busy || !giveAmt || !getAmt || !taker} onClick={create}><IconLink /> {busy ?? 'Sign and make the link'}</button>
@@ -236,7 +245,7 @@ export function Swap() {
           <div className="notice" style={{ marginTop: '1rem' }}>
             <div className="row between">
               <b>Offer ready</b>
-              <span className="small muted">{legText(made.offer.give)} <IconArrowRight /> {legText(made.offer.get)} with <a className="mono" href={addressUrl(made.offer.taker.toBase58())} target="_blank" rel="noreferrer">{shortAddr(made.offer.taker.toBase58(), 6, 6)}</a></span>
+              <span className="small muted">{legText(made.offer.give)} <IconArrowRight /> {legText(made.offer.get)} with <Addr addr={made.offer.taker.toBase58()} name={names.get(made.offer.taker.toBase58())} /></span>
             </div>
             <div className="row" style={{ marginTop: '.5rem' }}>
               <input className="input mono small" readOnly value={made.link} onFocus={(e) => e.currentTarget.select()} />

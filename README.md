@@ -20,6 +20,8 @@ Live: https://crumbs-cookie.vercel.app/ (mirror: https://wolfurx.github.io/crumb
 
 **Swap by link.** Trade any two tokens with another wallet, no escrow, no pool. The maker picks what they give and what they want, names the counterparty, and signs once; the app packs both legs into one transaction against a durable nonce so the offer does not expire in a minute, and hands back a link. The counterparty opens the link, sees exactly what moves (the app refuses any instruction it did not build), and signs. One transaction, all or nothing; cancelling is one click that advances the nonce. Offers are addressed to one wallet in this version.
 
+**.cook names.** Type a `.cook` name wherever Crumbs asks for a wallet: airdrop recipients, the swap counterparty. Wallets that set a primary name show it on the leaderboard, in holder tables and in the wallet button. Names are read straight from the name service program; there is nothing to buy or configure.
+
 **Clicker.** An idle clicker where every click is a transaction on Cookie Chain. Your wallet signs once to create a player and fund a browser session key with 0.1 COOK (about 20,000 clicks); the session key signs every click, purchase and claim silently. The program accepts three clicks per second and counts 5,000 a day; eight bakers (Cursor to Cookie Jar) produce cookies while you are away, each unit 15% dearer than the last. Every UTC day's cookie and click totals are recorded on chain and a fixed pool of CRUMB for that day is split by share, 70% by cookies produced and 30% by counted clicks. Leaderboard and totals come straight from the program accounts.
 
 **CRUMB.** Proof of play. 100,000,000 max supply, 6 decimals, minted only by registered games through the emission program, 100,000 a day while the first half is minted and halving every time minted supply crosses the halfway mark of what remains. No treasury, no premine, no price anywhere in the app. Holders benefit when the ecosystem decides they should: partner drops, allowlists and votes counted from a CRUMB holder snapshot taken here. Mint `54jTjjds4jezFZvJKnMRAsdrQ2fQ6yLHts356pGXn9g`.
@@ -67,7 +69,6 @@ Deployed from `main` to Vercel (production) and, as a mirror, to GitHub Pages by
 Crumbs is meant to be the toolbox every Cookie Chain community reaches for. Next in line:
 
 - Open swap offers anyone can take, which needs a small escrow program.
-- `.cook` names wherever Crumbs asks for an address.
 - Holder snapshots of NFT collections, ready for holder-only airdrops.
 
 The site shows the same list. Suggestions go in the issues or as replies to the launch thread.

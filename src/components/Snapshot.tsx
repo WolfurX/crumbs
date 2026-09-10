@@ -4,6 +4,8 @@ import { PublicKey } from '@solana/web3.js'
 import { getMint } from '@solana/spl-token'
 import { fetchHolders, type Holder } from '../lib/das'
 import { loadRegistry, searchRegistry, type TokenInfo } from '../lib/tokens'
+import { usePrimaryNames } from '../lib/names'
+import { Addr } from './Addr'
 import { COOK_MINT, TOKEN_2022_PROGRAM, TOKEN_PROGRAM, addressUrl, isPubkey } from '../lib/chain'
 import { fmtAmount, fmtInt, fmtPct, shortAddr } from '../lib/format'
 import { loadRecent, pushRecent, timeAgo, type RecentSnapshot } from '../lib/recent'
@@ -107,9 +109,7 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
     const top10 = rows.slice(0, 10).reduce((n, h) => n + h.amount, 0n)
     const top50 = rows.slice(0, 50).reduce((n, h) => n + h.amount, 0n)
     const programHeld = result.holders.filter((h) => h.isProgram).reduce((n, h) => n + h.amount, 0n)
-    const q = search.trim().toLowerCase()
-    let table = q ? rows.filter((h) => h.owner.toLowerCase().includes(q)) : rows
-    table = [...table].sort((a, b) => {
+    const table = [...rows].sort((a, b) => {
       if (sort.key === 'owner') return a.owner.localeCompare(b.owner) * sort.dir
       if (sort.key === 'accounts') return (a.accounts - b.accounts) * sort.dir
       return (a.amount > b.amount ? 1 : a.amount < b.amount ? -1 : 0) * sort.dir
@@ -127,7 +127,10 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
       table,
       rank,
     }
-  }, [result, hideProgram, minUi, search, sort])
+  }, [result, hideProgram, minUi, sort])
+  const names = usePrimaryNames(connection, view?.table.slice(0, 500).map((h) => h.owner) ?? [])
+  const q = search.trim().toLowerCase()
+  const table = !view ? [] : q ? view.table.filter((h) => h.owner.toLowerCase().includes(q) || names.get(h.owner)?.includes(q)) : view.table
 
   function exportCsv() {
     if (!result || !view) return
@@ -308,15 +311,15 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
             </label>
           </div>
 
-          <HolderChart holders={view.rows} total={view.held} decimals={result.token.decimals} symbol={result.token.symbol} />
+          <HolderChart holders={view.rows} total={view.held} decimals={result.token.decimals} symbol={result.token.symbol} names={names} />
 
           <hr className="hr" />
           <div className="row between" style={{ marginBottom: '0.6rem' }}>
             <label className="search">
               <IconSearch />
-              <input className="input mono" placeholder="Find an address" value={search} onChange={(e) => (setSearch(e.target.value), setShown(PAGE))} spellCheck={false} />
+              <input className="input mono" placeholder="Find an address or name" value={search} onChange={(e) => (setSearch(e.target.value), setShown(PAGE))} spellCheck={false} />
             </label>
-            <span className="muted small num">{fmtInt(view.table.length)} of {fmtInt(view.rows.length)}</span>
+            <span className="muted small num">{fmtInt(table.length)} of {fmtInt(view.rows.length)}</span>
           </div>
           <div className="tablewrap">
             <table>
@@ -324,10 +327,10 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
                 <tr><th>#</th>{th('owner', 'Owner')}{th('balance', 'Balance', true)}<th className="right">Share</th>{th('accounts', '', true)}</tr>
               </thead>
               <tbody>
-                {view.table.slice(0, shown).map((h) => (
+                {table.slice(0, shown).map((h) => (
                   <tr key={h.owner}>
                     <td className="muted num">{view.rank.get(h.owner)}</td>
-                    <td><a className="mono" href={addressUrl(h.owner)} target="_blank" rel="noreferrer">{shortAddr(h.owner, 6, 6)}</a></td>
+                    <td><Addr addr={h.owner} name={names.get(h.owner)} /></td>
                     <td className="right num">{fmtAmount(h.amount, result.token.decimals)}</td>
                     <td className="right num muted">{fmtPct(view.pct(h.amount))}</td>
                     <td className="right">{h.isProgram && <span className="pill">program</span>}{h.frozen && <span className="pill">frozen</span>}{h.accounts > 1 && <span className="pill">{h.accounts} accounts</span>}</td>
@@ -336,12 +339,12 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
               </tbody>
             </table>
           </div>
-          {view.table.length > shown && (
+          {table.length > shown && (
             <button className="btn quiet" style={{ marginTop: '0.5rem' }} onClick={() => setShown((n) => n + 100)}>
-              <IconChevronDown /> Show {fmtInt(Math.min(100, view.table.length - shown))} more
+              <IconChevronDown /> Show {fmtInt(Math.min(100, table.length - shown))} more
             </button>
           )}
-          {shown > PAGE && view.table.length > PAGE && (
+          {shown > PAGE && table.length > PAGE && (
             <button className="btn quiet" style={{ marginTop: '0.5rem' }} onClick={() => setShown(PAGE)}><IconCheck /> Back to top 25</button>
           )}
         </section>

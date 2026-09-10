@@ -3,6 +3,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { WalletReadyState } from '@solana/wallet-adapter-base'
 import { shortAddr, fmtAmount } from '../lib/format'
 import { COOK_DECIMALS, addressUrl } from '../lib/chain'
+import { usePrimaryNames } from '../lib/names'
 import { IconCopy, IconExternalLink, IconPlugConnected, IconWallet } from '../icons'
 
 /** Connect menu over the Wallet Standard: every installed wallet shows up, Nightly first. */
@@ -12,6 +13,7 @@ export function WalletButton() {
   const [open, setOpen] = useState(false)
   const [balance, setBalance] = useState<bigint | null>(null)
   const ref = useRef<HTMLDivElement>(null)
+  const names = usePrimaryNames(connection, publicKey ? [publicKey.toBase58()] : [])
 
   useEffect(() => {
     if (!open) return
@@ -46,7 +48,7 @@ export function WalletButton() {
       <div className="wallet" ref={ref}>
         <button className="btn" onClick={() => setOpen((o) => !o)}>
           {wallet?.adapter.icon && <img src={wallet.adapter.icon} alt="" width={18} height={18} style={{ borderRadius: 4 }} />}
-          <span className="mono">{shortAddr(publicKey.toBase58())}</span>
+          {names.get(publicKey.toBase58()) ? <span className="name">{names.get(publicKey.toBase58())}</span> : <span className="mono">{shortAddr(publicKey.toBase58())}</span>}
           {balance !== null && <span className="muted num">{fmtAmount(balance, COOK_DECIMALS, true)} COOK</span>}
         </button>
         {open && (

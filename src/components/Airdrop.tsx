@@ -7,6 +7,7 @@ import { BatchList } from './BatchList'
 import { ArtAirdrop } from './Art'
 import { toast } from './Toast'
 import { planAirdrop, parseRecipientList, proRata, resolveAsset, type AirdropPlan, type Asset, type Recipient } from '../lib/airdrop'
+import { looksLikeName, resolveNames } from '../lib/names'
 import { fetchOwnedAccounts, type OwnedAccount } from '../lib/revoke'
 import { loadRegistry, type TokenInfo } from '../lib/tokens'
 import { runBatches, type Batch } from '../lib/txs'
@@ -126,6 +127,14 @@ export function Airdrop({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
         if (parsed.errors.length) throw new Error(parsed.errors.slice(0, 3).join('; ') + (parsed.errors.length > 3 ? ` (+${parsed.errors.length - 3} more)` : ''))
         recipients = parsed.recipients
         if (!recipients.length) throw new Error('Paste at least one address.')
+        const named = recipients.filter((r) => looksLikeName(r.owner))
+        if (named.length) {
+          setBusy('Resolving .cook names…')
+          const found = await resolveNames(connection, named.map((r) => r.owner))
+          const missing = named.filter((r) => !found.get(r.owner)).map((r) => r.owner.trim())
+          if (missing.length) throw new Error(`Not registered as .cook names: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ` (+${missing.length - 5} more)` : ''}`)
+          recipients = recipients.map((r) => ({ ...r, owner: found.get(r.owner)?.toBase58() ?? r.owner }))
+        }
       }
       const p = await planAirdrop(connection, wallet.publicKey, resolved, recipients)
       if (!p.recipients.length) throw new Error(p.belowRent ? `Every recipient would end up under the ${fmtAmount(p.rentMinimum, COOK_DECIMALS)} COOK rent minimum. Send more per wallet.` : 'No valid recipients.')
@@ -258,8 +267,8 @@ export function Airdrop({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
             )
           ) : (
             <label className="field" style={{ marginTop: '0.9rem' }}>
-              <span>One recipient per line: address, then an optional amount</span>
-              <textarea className="input" spellCheck={false} placeholder={'8xk3…Wq9d, 100\n5Fjr…Lm2a, 250\n9Hq2…Zt7c'} value={list} onChange={(e) => setList(e.target.value)} />
+              <span>One recipient per line: address or .cook name, then an optional amount</span>
+              <textarea className="input" spellCheck={false} placeholder={'8xk3…Wq9d, 100\nalice.cook, 250\n9Hq2…Zt7c'} value={list} onChange={(e) => setList(e.target.value)} />
             </label>
           )}
 

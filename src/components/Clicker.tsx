@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { usePrimaryNames } from '../lib/names'
+import { Addr } from './Addr'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { ComputeBudgetProgram, Keypair, Transaction } from '@solana/web3.js'
 import { GameClient, explainGameError } from '../game/client'
@@ -84,6 +86,8 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
       setError(explainGameError(e))
     }
   }, [client, connection, owner])
+
+  const names = usePrimaryNames(connection, board.map((p) => p.owner.toBase58()))
 
   useEffect(() => {
     void load()
@@ -411,7 +415,7 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
               {board.map((p, i) => (
                 <tr key={p.owner.toBase58()} className={p.owner.equals(owner) ? 'me' : ''}>
                   <td className="muted num">{i + 1}</td>
-                  <td><a className="mono" href={addressUrl(p.owner.toBase58())} target="_blank" rel="noreferrer">{shortAddr(p.owner.toBase58(), 6, 6)}</a>{p.owner.equals(owner) && <span className="pill" style={{ marginLeft: '.4rem' }}>you</span>}</td>
+                  <td><Addr addr={p.owner.toBase58()} name={names.get(p.owner.toBase58())} />{p.owner.equals(owner) && <span className="pill" style={{ marginLeft: '.4rem' }}>you</span>}</td>
                   <td className="right num">{fmtCookies(p.lifetimeCookiesMilli)}</td>
                   <td className="right num">{fmtInt(p.owned.reduce((a, b) => a + b, 0))}</td>
                   <td className="right num">{fmtInt(Number(p.lifetimeClicks))}</td>

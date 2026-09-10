@@ -8,10 +8,12 @@ interface Props {
   decimals: number
   symbol: string
   top?: number
+  /** Primary .cook names by owner, used as bar labels when present. */
+  names?: Map<string, string>
 }
 
 /** Top holders as thin horizontal bars: one hue, share at the tip, the rest folded into "Others". */
-export function HolderChart({ holders, total, decimals, symbol, top = 10 }: Props) {
+export function HolderChart({ holders, total, decimals, symbol, top = 10, names }: Props) {
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null)
   if (!holders.length || total === 0n) return null
   const head = holders.slice(0, top)
@@ -19,7 +21,7 @@ export function HolderChart({ holders, total, decimals, symbol, top = 10 }: Prop
   const pct = (a: bigint) => Number((a * 100000n) / total) / 1000
   const max = Math.max(pct(head[0].amount), pct(rest))
 
-  const rows = head.map((h) => ({ label: shortAddr(h.owner, 4, 4), value: h.amount, pct: pct(h.amount), owner: h.owner, program: h.isProgram }))
+  const rows = head.map((h) => ({ label: names?.get(h.owner) ?? shortAddr(h.owner, 4, 4), value: h.amount, pct: pct(h.amount), owner: h.owner, program: h.isProgram }))
   if (rest > 0n) rows.push({ label: `${holders.length - top} others`, value: rest, pct: pct(rest), owner: '', program: false })
 
   return (

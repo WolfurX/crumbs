@@ -8,3 +8,5 @@ program/target
 program/node_modules
 program/.anchor
 program/test-ledger
+dist-engine
+dist-names
