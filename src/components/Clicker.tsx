@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { usePrimaryNames } from '../lib/names'
 import { Addr } from './Addr'
+import { CookieArt } from './Art'
+import { webglOk } from '../lib/webgl'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { ComputeBudgetProgram, Keypair, Transaction } from '@solana/web3.js'
 import { GameClient, explainGameError } from '../game/client'
@@ -16,6 +18,14 @@ import { renderBakeryCard } from '../game/bakerycard'
 
 const TOPUP_LAMPORTS = 100_000_000 // 0.1 COOK, about 20,000 clicks
 const CLICK_GAP_MS = 480 // the program takes two clicks per second
+
+const CookieScene = lazy(() => import('./CookieScene'))
+
+/** The 3D cookie when the browser can draw it, the flat one otherwise and while the chunk loads. */
+function CookieView({ big = false, shake }: { big?: boolean; shake?: number }) {
+  if (!webglOk()) return <CookieArt big={big} />
+  return <Suspense fallback={<CookieArt big={big} />}><CookieScene shake={shake} /></Suspense>
+}
 
 interface Feed { id: number; state: 'sent' | 'ok' | 'fail'; note?: string; sig?: string; at: number }
 
@@ -265,7 +275,7 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
           <p className="lead">An idle clicker where every click is a transaction on Cookie Chain. Click for cookies, buy bakers that bake while you sleep, turn cookies into CRUMB on a fixed daily schedule.</p>
           <p className="muted small">Connect a wallet to start.</p>
         </div>
-        <CookieArt />
+        <CookieView />
       </section>
     )
   }
@@ -288,13 +298,14 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
             {error && <span className="err">{error}</span>}
           </div>
         </div>
-        <CookieArt />
+        <CookieView />
       </section>
     )
   }
 
   const rank = board.findIndex((p) => p.owner.equals(owner)) + 1
   const sessionLow = sessionBalance < 2_000_000n
+  const fails = feed.filter((f) => f.state === 'fail').length
 
   return (
     <>
@@ -307,7 +318,7 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
             </div>
             <div className="cookie-wrap">
               <button className="cookie-btn" onClick={click} disabled={!session || sessionLow} aria-label="Click the cookie">
-                <CookieArt big />
+                <CookieView big shake={fails} />
               </button>
               {pops.map((p) => <span key={p.id} className="pop" style={{ left: p.x, top: p.y }}>{p.text}</span>)}
             </div>
@@ -450,15 +461,4 @@ function entryBurn(g: GameState): bigint {
   return b
 }
 
-function CookieArt({ big = false }: { big?: boolean }) {
-  const r = big ? 96 : 40
-  const chips: [number, number, number][] = [[-0.35, -0.3, 0.14], [0.3, -0.42, 0.11], [0.42, 0.22, 0.15], [-0.1, 0.45, 0.12], [-0.5, 0.2, 0.1], [0.05, -0.02, 0.1]]
-  return (
-    <svg className={big ? 'cookie-big' : 'art'} viewBox={`0 0 ${r * 2.4} ${r * 2.4}`} aria-hidden="true">
-      <circle cx={r * 1.2} cy={r * 1.2} r={r * 1.15} fill="none" stroke="var(--line-strong)" strokeWidth={1.25} strokeDasharray="3 7" />
-      <circle cx={r * 1.2} cy={r * 1.2} r={r} fill="var(--accent-soft)" stroke="var(--accent)" strokeWidth={2} />
-      {chips.map(([dx, dy, dr], i) => <circle key={i} cx={r * 1.2 + dx * r} cy={r * 1.2 + dy * r} r={dr * r} fill="var(--accent)" />)}
-    </svg>
-  )
-}
 

@@ -1,22 +1,18 @@
 // Line-art illustrations for the empty states. One stroke weight, the accent for the subject, the
 // hairline color for context. The crumbs drift slowly (transform only); still under reduced motion.
+import { COOKIE_CHIPS } from '../lib/cookie-chips'
+
 const A = 'var(--accent)'
 const L = 'var(--line-strong)'
 const M = 'var(--muted)'
+
 
 function Crumb({ x, y, r = 2.2, delay = 0 }: { x: number; y: number; r?: number; delay?: number }) {
   return <circle className="art-crumb" cx={x} cy={y} r={r} fill={A} style={{ animationDelay: `${delay}s` }} />
 }
 
 function Cookie({ x, y, r }: { x: number; y: number; r: number }) {
-  const chips = [
-    [-0.35, -0.3, 0.14],
-    [0.3, -0.42, 0.11],
-    [0.42, 0.22, 0.15],
-    [-0.1, 0.45, 0.12],
-    [-0.5, 0.2, 0.1],
-    [0.05, -0.02, 0.1],
-  ]
+  const chips = COOKIE_CHIPS
   return (
     <g>
       <circle cx={x} cy={y} r={r} fill="none" stroke={A} strokeWidth={1.75} />
@@ -97,6 +93,18 @@ export function ArtCleanup() {
       <Crumb x={60} y={124} r={1.6} delay={2} />
       <path d="M248 78 l3 -9 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3 z" fill="none" stroke={L} strokeWidth={1.25} />
       <path d="M270 40 l2 -5 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 z" fill="none" stroke={L} strokeWidth={1.25} />
+    </svg>
+  )
+}
+
+/** The clicker cookie, flat: the fallback when WebGL is missing and the placeholder while the 3D chunk loads. */
+export function CookieArt({ big = false }: { big?: boolean }) {
+  const r = big ? 96 : 40
+  return (
+    <svg className={big ? 'cookie-big' : 'art'} viewBox={`0 0 ${r * 2.4} ${r * 2.4}`} aria-hidden="true">
+      <circle cx={r * 1.2} cy={r * 1.2} r={r * 1.15} fill="none" stroke="var(--line-strong)" strokeWidth={1.25} strokeDasharray="3 7" />
+      <circle cx={r * 1.2} cy={r * 1.2} r={r} fill="var(--accent-soft)" stroke="var(--accent)" strokeWidth={2} />
+      {COOKIE_CHIPS.map(([dx, dy, dr], i) => <circle key={i} cx={r * 1.2 + dx * r} cy={r * 1.2 + dy * r} r={dr * r} fill="var(--accent)" />)}
     </svg>
   )
 }
