@@ -1,0 +1,12 @@
+{
+  "name": "Crumb",
+  "symbol": "CRUMB",
+  "description": "Proof of play on Cookie Chain. CRUMB is minted only by playing Crumbs games on a fixed, supply-halving schedule. Nobody sells it and the app assigns it no price. Holders benefit when the ecosystem decides they should: partner drops, allowlists and signal votes, all counted from holder snapshots taken with Crumbs.",
+  "image": "https://crumbs-cookie.vercel.app/crumb.png",
+  "external_url": "https://crumbs-cookie.vercel.app/",
+  "attributes": [
+    { "trait_type": "max_supply", "value": "100000000" },
+    { "trait_type": "emission", "value": "100000 per day, halving each time minted supply crosses half of what remains" },
+    { "trait_type": "chain", "value": "Cookie Chain" }
+  ]
+}

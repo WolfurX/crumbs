@@ -8,16 +8,17 @@ import { Toaster } from './components/Toast'
 import { Roadmap } from './components/Roadmap'
 import { Clicker } from './components/Clicker'
 import { Crumb } from './components/Crumb'
+import { Mint } from './components/Mint'
 import { Swap } from './components/Swap'
 import { offerFromHash } from './swap/offer'
 import { useInstallPrompt } from './lib/install'
 import { webglOk } from './lib/webgl'
-import { IconAperture, IconBrush, IconCoins, IconCookie, IconDownload, IconLink, IconParachute } from './icons'
+import { IconAperture, IconBrush, IconCoins, IconCookie, IconDownload, IconLink, IconParachute, IconPhoto } from './icons'
 
 const HeroScene = lazy(() => import('./components/HeroScene'))
 const WIDE = '(min-width: 900px)'
 
-type Tab = 'snapshot' | 'airdrop' | 'cleanup' | 'swap' | 'clicker' | 'crumb'
+type Tab = 'snapshot' | 'airdrop' | 'cleanup' | 'swap' | 'clicker' | 'crumb' | 'mint'
 
 const TABS: { id: Tab; label: string; icon: typeof IconAperture }[] = [
   { id: 'snapshot', label: 'Snapshot', icon: IconAperture },
@@ -26,6 +27,7 @@ const TABS: { id: Tab; label: string; icon: typeof IconAperture }[] = [
   { id: 'swap', label: 'Swap', icon: IconLink },
   { id: 'clicker', label: 'Clicker', icon: IconCookie },
   { id: 'crumb', label: 'CRUMB', icon: IconCoins },
+  { id: 'mint', label: 'Mint NFT', icon: IconPhoto },
 ]
 
 export default function App() {
@@ -91,12 +93,13 @@ export default function App() {
         {tab === 'swap' && <Swap />}
         {tab === 'clicker' && <Clicker onSnapshot={snapshotOf} />}
         {tab === 'crumb' && <Crumb onSnapshot={snapshotOf} />}
+        {tab === 'mint' && <Mint snapshot={snapshot} onNeedSnapshot={() => setTab('snapshot')} />}
       </div>
 
       <Roadmap />
 
       <footer>
-        <span>Utilities for Cookie Chain communities. No fees, no backend, your wallet signs every transaction.</span>
+        <span>Utilities for Cookie Chain communities. No fees, no accounts, no servers holding your data. Your wallet signs every transaction.</span>
         <a href="https://cookiescan.io" target="_blank" rel="noreferrer">Cookiescan</a>
         <a href="https://hyperlane.cookiescan.io" target="_blank" rel="noreferrer">Bridge COOK</a>
         <a href="https://nightly.app" target="_blank" rel="noreferrer">Nightly wallet</a>

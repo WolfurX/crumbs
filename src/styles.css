@@ -202,6 +202,7 @@ h1, h2, .brand, .tile .value { font-family: var(--display); }
 .recent { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-top: 0.9rem; }
 .chip { border: 1px solid var(--line-strong); background: none; color: var(--ink); border-radius: 999px; padding: 0.25rem 0.7rem; font-size: 0.85rem; cursor: pointer; }
 .chip:disabled { opacity: 0.5; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 @media (hover: hover) and (pointer: fine) { .chip:hover { border-color: var(--accent); } }
 
 /* stepper */
@@ -274,9 +275,9 @@ tr.me td { background: var(--accent-soft); }
 .away { max-width: 40ch; }
 @media (prefers-reduced-motion: reduce) { .pop { animation: none; opacity: 0; } }
 
-/* six tabs do not fit one row on a phone: a 3x2 grid of outlined tabs instead of a clipped strip */
+/* seven tabs do not fit one row on a phone: a four-plus-three grid of outlined tabs instead of a clipped strip */
 @media (max-width: 560px) {
-  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; border-bottom: 0; }
+  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; border-bottom: 0; }
   .tab { justify-content: center; border: 1px solid var(--line); border-radius: var(--radius); padding: 0.5rem 0.4rem; margin-bottom: 0; font-size: 0.9rem; }
   .tab[aria-selected="true"] { border-color: var(--accent); background: var(--surface); }
 }
@@ -286,3 +287,43 @@ tr.me td { background: var(--accent-soft); }
 .cookie3d canvas { display: block; width: 100%; height: 100%; }
 .empty .cookie3d { max-width: 300px; }
 @media (max-width: 620px) { .empty .cookie3d { max-width: 260px; margin: 0 auto; } }
+
+/* Mint NFT: quick drop */
+.mint { display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem; align-items: start; }
+.mint .side { border-left: 1px solid var(--line); padding-left: 1.5rem; }
+@media (max-width: 760px) { .mint { grid-template-columns: 1fr; } .mint .side { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 1rem; } }
+.mint .sec { padding: 1rem 0; border-bottom: 1px solid var(--line); }
+.mint .sec:first-child { padding-top: 0; }
+.mint .sec:last-child { border-bottom: 0; padding-bottom: 0; }
+.mint .sec > .t { font-weight: 600; margin-bottom: 0.55rem; }
+.mint .locked { opacity: 0.4; pointer-events: none; }
+.mint .limit { color: var(--bad); font-size: 0.85rem; }
+.mint h2 { margin: 0 0 0.3rem; }
+.mint .lead { color: var(--ink-2); margin: 0 0 1rem; }
+.dropzone { display: block; border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: 1.6rem 1rem; text-align: center; color: var(--ink-2); cursor: pointer; transition: border-color 0.15s var(--ease); }
+.dropzone.over, .dropzone:hover { border-color: var(--accent); }
+.dropzone small { display: block; color: var(--muted); margin-top: 0.35rem; }
+.dropzone input { display: none; }
+.thumb { width: 72px; height: 72px; border-radius: var(--radius); border: 1px solid var(--line-strong); object-fit: cover; background: var(--bg); flex: none; }
+.nftcard { border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 0.7rem; background: var(--surface-2); }
+.nftcard img, .nftcard .blank { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; background: var(--bg); }
+.nftcard .nm { margin-top: 0.6rem; font-weight: 600; }
+.nftcard .cl { font-size: 0.8rem; color: var(--muted); }
+.checks { list-style: none; margin: 0.9rem 0 0; padding: 0; font-size: 0.9rem; }
+.checks li { display: flex; gap: 0.55rem; align-items: center; padding: 0.28rem 0; color: var(--muted); }
+.checks li::before { content: ""; width: 14px; height: 14px; border: 1px solid var(--line-strong); border-radius: 50%; flex: none; transition: background 0.2s var(--ease), border-color 0.2s var(--ease); }
+.checks li.ok { color: var(--ink); }
+.checks li.ok::before { background: var(--accent); border-color: var(--accent); }
+.costbox { margin-top: 0.9rem; border: 1px solid var(--line); border-radius: var(--radius); padding: 0.6rem 0.75rem; font-size: 0.9rem; display: grid; gap: 0.3rem; }
+.costbox .total { margin-top: 0.25rem; padding-top: 0.45rem; border-top: 1px solid var(--line); font-weight: 600; }
+.sheet { border: 1px solid var(--accent); border-radius: var(--radius); padding: 0.9rem 1rem; background: var(--surface-2); }
+.stage { border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem 1rem; margin-top: 0.9rem; display: grid; gap: 0.8rem; }
+.prog { height: 6px; border: 1px solid var(--line-strong); border-radius: 3px; overflow: hidden; margin-bottom: 0.35rem; }
+.prog i { display: block; height: 100%; background: var(--accent); transition: width 0.3s var(--ease); }
+.btn.wide { width: 100%; justify-content: center; }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--ink-2); text-decoration: underline; cursor: pointer; font: inherit; display: inline-flex; align-items: center; gap: 0.3rem; }
+.links { list-style: none; margin: 1rem 0 0; padding: 0; max-width: 380px; }
+.links li { border-bottom: 1px solid var(--line); }
+.links li:last-child { border-bottom: 0; }
+.links a, .links .linkbtn { display: flex; justify-content: space-between; align-items: center; padding: 0.55rem 0; color: var(--ink); text-decoration: none; width: 100%; }
+.links a:hover, .links .linkbtn:hover { color: var(--accent); }

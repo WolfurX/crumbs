@@ -117,3 +117,12 @@ export function verifyCollectionLegacyIx(itemMint: PublicKey, collectionMint: Pu
     ],
   })
 }
+
+/** UpdateMetadataAccountV2 (discriminator 15) with only a new update authority: hands a piece to its creator. */
+export function setUpdateAuthorityIx(mint: PublicKey, currentAuthority: PublicKey, newAuthority: PublicKey): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: METADATA_PROGRAM,
+    data: Buffer.concat([u8(15), none(), some(newAuthority.toBuffer()), none(), none()]),
+    keys: [meta(metadataPda(mint), true), meta(currentAuthority, false, true)],
+  })
+}

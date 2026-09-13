@@ -11,9 +11,9 @@ export const NAME_LIMIT = NAME_MAX - ' #1000'.length
 export const DESCRIPTION_LIMIT = 300
 export const ROYALTY_MAX_BPS = 5000
 export const DEFAULT_ROYALTY_BPS = 500
-/** Wallet prompts: pieces per signAllTransactions call. */
-export const PIECES_PER_APPROVAL = 100
 const FEE = 5000n
+/** Metaplex keeps this in every new metadata account. */
+const METAPLEX_CREATE_FEE = 10_000_000n
 const BUFFER = 10_000_000n // 0.01 COOK of slack on the session key
 
 export interface DropForm {
@@ -37,15 +37,17 @@ let rentsCache: Promise<Rents> | null = null
 export function fetchRents(connection: Connection): Promise<Rents> {
   if (!rentsCache) {
     rentsCache = (async () => {
+      // Token Metadata on Cookie Chain allocates 607 bytes of metadata and 20 of master edition
+      // (measured 2026-09-13), and keeps Metaplex's 0.01 create fee inside the metadata account.
       const [mint, ata, metadata, edition, b0, b1] = await Promise.all([
         connection.getMinimumBalanceForRentExemption(MINT_SIZE),
         connection.getMinimumBalanceForRentExemption(165),
-        connection.getMinimumBalanceForRentExemption(679),
-        connection.getMinimumBalanceForRentExemption(282),
+        connection.getMinimumBalanceForRentExemption(607),
+        connection.getMinimumBalanceForRentExemption(20),
         connection.getMinimumBalanceForRentExemption(HEADER),
         connection.getMinimumBalanceForRentExemption(HEADER + 100_000),
       ])
-      return { mint: BigInt(mint), ata: BigInt(ata), metadata: BigInt(metadata), edition: BigInt(edition), blobBase: BigInt(b0), blobPerByte: (BigInt(b1) - BigInt(b0)) / 100_000n }
+      return { mint: BigInt(mint), ata: BigInt(ata), metadata: BigInt(metadata) + METAPLEX_CREATE_FEE, edition: BigInt(edition), blobBase: BigInt(b0), blobPerByte: (BigInt(b1) - BigInt(b0)) / 100_000n }
     })().catch((e) => {
       rentsCache = null
       throw e
@@ -87,13 +89,12 @@ export interface Estimate {
   pieces: bigint
   fees: bigint
   total: bigint
-  /** What the session key is funded with: blobs plus their fees plus slack. */
+  /** What the session key is funded with: everything, plus slack. The wallet signs that one transfer. */
   session: bigint
-  /** Transactions the session key sends. */
+  /** Transactions the session key sends to store the picture and labels. */
   storeTxs: number
-  /** Transactions the wallet signs: collection plus one per piece. */
+  /** Transactions the session key sends to mint: collection, pieces, handover. */
   mintTxs: number
-  approvals: number
 }
 
 export function estimate(r: Rents, form: DropForm, imageSize: number, mime: string, count: number): Estimate {
@@ -101,12 +102,13 @@ export function estimate(r: Rents, form: DropForm, imageSize: number, mime: stri
   const image = blobRentOf(r, imageSize)
   const labels = blobRentOf(r, labelSize) * BigInt(count + 1)
   const storeTxs = txsOf(imageSize) + (count + 1) * txsOf(labelSize) + 1
-  const mintTxs = count + 1
+  const mintTxs = count + 2
   const per = r.mint + r.ata + r.metadata + r.edition
   const pieces = per * BigInt(count + 1)
-  const fees = FEE * BigInt(storeTxs + mintTxs)
-  const session = image + labels + FEE * BigInt(storeTxs) + BUFFER
-  return { image, labels, pieces, fees, total: session + pieces + FEE * BigInt(mintTxs), session, storeTxs, mintTxs, approvals: 1 + Math.ceil(mintTxs / PIECES_PER_APPROVAL) }
+  // mint transactions carry two signatures: the session key and the new mint
+  const fees = FEE * BigInt(storeTxs + 2 * mintTxs + 2)
+  const session = image + labels + pieces + fees + BUFFER
+  return { image, labels, pieces, fees, total: session, session, storeTxs, mintTxs }
 }
 
 export const chunkCount = chunksOf

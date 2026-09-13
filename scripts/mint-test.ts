@@ -10,7 +10,18 @@ import { newDrop, runDrop, type Progress } from '../src/mint/engine'
 import { readBlob, blobUrl } from '../src/mint/blob'
 import { estimate, fetchRents } from '../src/mint/plan'
 import { metadataPda } from '../src/mint/tm'
+import { loadDrop } from '../src/mint/engine'
+// Node has no localStorage: keep the drop state in a file so a killed run can resume and nothing strands.
+import { existsSync, writeFileSync } from 'node:fs'
+const STATE_FILE = `${process.env.HOME}/.config/crumbs/mint-test-state.json`
+const mem: Record<string, string> = existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, 'utf8')) : {}
+;(globalThis as unknown as { localStorage: unknown }).localStorage = {
+  getItem: (k: string) => mem[k] ?? null,
+  setItem: (k: string, v: string) => { mem[k] = v; writeFileSync(STATE_FILE, JSON.stringify(mem)) },
+  removeItem: (k: string) => { delete mem[k]; writeFileSync(STATE_FILE, JSON.stringify(mem)) },
+}
 
+process.on('unhandledRejection', (e) => { console.error('FAILED', e); process.exit(1) })
 const conn = new Connection(RPC_URL, 'confirmed')
 const raw = JSON.parse(readFileSync(`${process.env.HOME}/.config/crumbs/deployer.json`, 'utf8'))
 const kp = Keypair.fromSecretKey(Uint8Array.from(Array.isArray(raw) ? raw : raw.secretKey))
@@ -28,10 +39,12 @@ console.log('deployer', kp.publicKey.toBase58(), 'balance', await bal(), 'COOK; 
 const form = { name: 'Crumbs Test Pass', symbol: 'CTP', description: 'Engine test of the Crumbs quick drop. Safe to ignore.', royaltyBps: 500 }
 const rents = await fetchRents(conn)
 const est = estimate(rents, form, png.length, 'image/png', 3)
-console.log(`estimate: image ${cook(est.image)} labels ${cook(est.labels)} pieces ${cook(est.pieces)} fees ${cook(est.fees)} total ${cook(est.total)} COOK; store txs ${est.storeTxs}, mint txs ${est.mintTxs}, approvals ${est.approvals}`)
+console.log(`estimate: image ${cook(est.image)} labels ${cook(est.labels)} pieces ${cook(est.pieces)} fees ${cook(est.fees)} total ${cook(est.total)} COOK; store txs ${est.storeTxs}, mint txs ${est.mintTxs}`)
 
 const recipients = [kp.publicKey, Keypair.generate().publicKey, Keypair.generate().publicKey]
-const state = newDrop(kp.publicKey, form, recipients, { bytes: png, mime: 'image/png', width: 1200, height: 630 })
+const resumed = process.env.RESUME ? loadDrop(kp.publicKey) : null
+if (resumed) console.log('resuming drop from', resumed.stage)
+const state = resumed ?? newDrop(kp.publicKey, form, recipients, { bytes: png, mime: 'image/png', width: 1200, height: 630 })
 const t0 = Date.now()
 let last = ''
 await runDrop(conn, signer, state, {
@@ -73,3 +86,5 @@ try {
 } catch (e) {
   console.log('bazaar error', (e as Error).message)
 }
+// the RPC websocket keeps the event loop alive; leave explicitly
+process.exit(0)

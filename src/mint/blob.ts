@@ -73,8 +73,8 @@ export async function pool<T>(n: number, tasks: (() => Promise<T>)[]): Promise<T
 /** A blockhash shared by many transactions, refreshed every 20 s. */
 export function blockhashCache(connection: Connection) {
   let cur: { blockhash: string; lastValidBlockHeight: number; at: number } | null = null
-  return async () => {
-    if (!cur || Date.now() - cur.at > 20_000) cur = { ...(await connection.getLatestBlockhash('confirmed')), at: Date.now() }
+  return async (force = false) => {
+    if (force || !cur || Date.now() - cur.at > 20_000) cur = { ...(await connection.getLatestBlockhash('confirmed')), at: Date.now() }
     return cur
   }
 }

@@ -22,6 +22,8 @@ Live: https://crumbs-cookie.vercel.app/ (mirror: https://wolfurx.github.io/crumb
 
 **.cook names.** Type a `.cook` name wherever Crumbs asks for a wallet: airdrop recipients, the swap counterparty. Wallets that set a primary name show it on the leaderboard, in holder tables and in the wallet button. Names are read straight from the name service program; there is nothing to buy or configure.
 
+**Mint NFT.** Release a quick drop: one picture, as many numbered copies as you like (up to 1,000), sent to your wallet, to every holder of a token from a snapshot, or to a pasted list of addresses and `.cook` names. The picture is resized to 1024px WebP in your browser and stored on Cookie Chain itself, in a byte-blob account, next to one metadata JSON per piece; a keyless read route on the Crumbs domain serves those bytes over HTTPS so wallets, Cookiescan and Baked Bazaar can show them. Your wallet approves once, to fund a throwaway session key with the exact rent and fees; the key stores the files, mints the collection NFT, mints and verifies every piece into it, hands every update authority to you, and returns what is left. Every piece is a standard Metaplex NFT: master edition, verified collection, your royalty. Costs are shown before you approve, and a closed tab resumes where it stopped without minting twice.
+
 **Clicker.** An idle clicker where every click is a transaction on Cookie Chain. Your wallet signs once to create a player and fund a browser session key with 0.1 COOK (about 20,000 clicks); the session key signs every click, purchase and claim silently. The program accepts three clicks per second and counts 5,000 a day; eight bakers (Cursor to Cookie Jar) produce cookies while you are away, each unit 15% dearer than the last. Every UTC day's cookie and click totals are recorded on chain and a fixed pool of CRUMB for that day is split by share, 70% by cookies produced and 30% by counted clicks. Leaderboard and totals come straight from the program accounts.
 
 **CRUMB.** Proof of play. 100,000,000 max supply, 6 decimals, minted only by registered games through the emission program, 100,000 a day while the first half is minted and halving every time minted supply crosses the halfway mark of what remains. No treasury, no premine, no price anywhere in the app. Holders benefit when the ecosystem decides they should: partner drops, allowlists and votes counted from a CRUMB holder snapshot taken here. Mint `54jTjjds4jezFZvJKnMRAsdrQ2fQ6yLHts356pGXn9g`.
@@ -41,13 +43,15 @@ Live: https://crumbs-cookie.vercel.app/ (mirror: https://wolfurx.github.io/crumb
 - Transactions are legacy `Transaction`s with a compute-unit limit sized to their contents. Packing is by measured serialized size, not by a fixed count. Each recipient's instructions stay together in one transaction.
 - Signing uses `signAllTransactions` when the wallet offers it, otherwise one prompt per transaction. Confirmation waits on the blockhash's last valid block height; expired transactions are marked so they can be re-signed against a fresh blockhash without resending the ones that landed.
 - Native COOK reuses Solana's native mint id (`So111…112`) and has 9 decimals.
+- NFT pictures and metadata live in `crumb_store` accounts, written in 1 KB chunks by the drop's session key. `/s/<account>` on crumbs-cookie.vercel.app reads the account over RPC and serves the bytes with their stored content type; it keeps no state and holds no keys. Blob accounts are created client-side with the system program because CPI allocation is capped at 10 KB.
 
 ## Programs
 
-Two Anchor programs live in `program/`, built for SBPF v0 and tested in LiteSVM (`cargo test` after `anchor build --arch v0`).
+Three Anchor programs live in `program/`, built for SBPF v0 and tested in LiteSVM (`cargo test` after `anchor build --arch v0`).
 
 - `crumb_emission` `C8NRjLU9ajS5okBSbDhMBXsF2naVGm82y6g3hdefTQcY`: owns the CRUMB mint authority, enforces the hard cap and the supply-triggered halving, and keeps a registry of distributors with weights. Freeze authority is burned at initialisation.
 - `crumb_clicker` `7aPZt6exe1H2A1fnSqV2kV2ZHpgQWtKe4LYEXv1x3Lqi`: players with session keys, three clicks per second and 5,000 a day, eight bakers, per-day settlement of shares, claims through the emission program.
+- `crumb_store` `A9bmhLfaJRUQKQvRktrtztg1w3hoRjp5UVc5TUhcaq2J`: byte blobs for NFT pictures and metadata. `init` writes the header into a zeroed account, `write` fills a range, `finalize` freezes the blob and hands its authority to the creator, `close` returns the rent.
 
 `sim/economy.py` is the deterministic economy model the tier table and caps were tuned against; `sim/report.py` renders it.
 
