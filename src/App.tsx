@@ -69,7 +69,7 @@ export default function App() {
       <section className="hero with-art">
         <div>
           <h1>The utility app for Cookie Chain.</h1>
-          <p>Snapshot holders, airdrop tokens, tidy your wallet, and play the clicker that mints CRUMB. Runs in your browser, installs as an app, takes no fee.</p>
+          <p>Snapshot holders, airdrop tokens, mint NFT drops stored on chain, tidy your wallet, and play the clicker that mints CRUMB. Runs in your browser, installs as an app, takes no fee.</p>
         </div>
         <div className="hero-art" aria-hidden="true">
           {wide && webglOk() ? <Suspense fallback={heroImg}><HeroScene /></Suspense> : heroImg}
