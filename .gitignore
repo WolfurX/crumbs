@@ -10,3 +10,7 @@ program/.anchor
 program/test-ledger
 dist-engine
 dist-names
+
+# engine and script builds, driver screenshots
+dist-*/
+/*.png
