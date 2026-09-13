@@ -3,5 +3,11 @@
   "framework": "vite",
   "installCommand": "npm install --no-audit --no-fund",
   "buildCommand": "npm run build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/s/:id",
+      "destination": "/api/s/:id"
+    }
+  ]
 }
