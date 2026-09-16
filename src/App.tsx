@@ -14,7 +14,7 @@ import { Swap } from './components/Swap'
 import { useInstallPrompt } from './lib/install'
 import { webglOk } from './lib/webgl'
 import { loadSnapshot, saveSnapshot } from './lib/history'
-import { TabActiveContext, setHashTab, tabFromHash, type Tab } from './lib/tabs'
+import { TabActiveContext, pageFromHash, setHashTab, tabFromHash, type Page, type Tab } from './lib/tabs'
 import { IconAperture, IconBrush, IconCoins, IconCookie, IconDownload, IconLink, IconParachute, IconPhoto } from './icons'
 
 const HeroScene = lazy(() => import('./components/HeroScene'))
@@ -34,6 +34,8 @@ export default function App() {
   // The tab lives in the URL hash. Tabs mount on first visit and stay mounted, hidden, so a
   // pasted list, a running airdrop or a signed swap link survives a look at another tab.
   const [tab, setTabState] = useState<Tab>(() => tabFromHash() ?? 'snapshot')
+  // a page (the changelog) covers the tool view; the tabs stay mounted underneath
+  const [page, setPage] = useState<Page | null>(() => pageFromHash())
   const [visited, setVisited] = useState<Set<Tab>>(() => new Set([tab]))
   const [snapshot, setSnapshotState] = useState<SnapshotResult | null>(() => loadSnapshot())
   const [presetMint, setPresetMint] = useState<string | null>(null)
@@ -52,12 +54,18 @@ export default function App() {
   }, [])
   useEffect(() => {
     const on = () => {
+      const p = pageFromHash()
+      setPage(p)
+      if (p) window.scrollTo(0, 0)
       const t = tabFromHash()
       if (t) show(t)
     }
     window.addEventListener('hashchange', on)
     return () => window.removeEventListener('hashchange', on)
   }, [show])
+  useEffect(() => {
+    document.title = page === 'changelog' ? 'Changelog · Crumbs' : 'Crumbs'
+  }, [page])
   const setTab = useCallback(
     (t: Tab) => {
       show(t)
@@ -78,7 +86,7 @@ export default function App() {
   const panel = (id: Tab, node: ReactNode) =>
     visited.has(id) && (
       <div className="panel" key={id} hidden={tab !== id} role="tabpanel">
-        <TabActiveContext.Provider value={tab === id}>{node}</TabActiveContext.Provider>
+        <TabActiveContext.Provider value={tab === id && !page}>{node}</TabActiveContext.Provider>
       </div>
     )
 
@@ -99,6 +107,9 @@ export default function App() {
         </div>
       </header>
 
+      {page === 'changelog' && <Changelog backTo={tab} />}
+
+      <div hidden={!!page}>
       <section className="hero with-art">
         <div>
           <h1>The utility app for Cookie Chain.</h1>
@@ -128,10 +139,11 @@ export default function App() {
       {panel('mint', <Mint snapshot={snapshot} onNeedSnapshot={() => setTab('snapshot')} />)}
 
       <Roadmap />
-      <Changelog />
+      </div>
 
       <footer>
         <span>Utilities for Cookie Chain communities. No fees, no accounts, no servers holding your data. Your wallet signs every transaction.</span>
+        <a href="#changelog">Changelog</a>
         <a href="https://cookiescan.io" target="_blank" rel="noreferrer">Cookiescan</a>
         <a href="https://hyperlane.cookiescan.io" target="_blank" rel="noreferrer">Bridge COOK</a>
         <a href="https://nightly.app" target="_blank" rel="noreferrer">Nightly wallet</a>

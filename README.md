@@ -81,7 +81,7 @@ The site shows the same list. Suggestions go in the issues or as replies to the 
 
 ## Changelog
 
-The site lists what changed under the roadmap. In short:
+The site has the full list at https://crumbs-cookie.vercel.app/#changelog (footer link). In short:
 
 - **2026-09-16** Quality of life: tabs keep their state and live in the URL, the last snapshot survives a reload, airdrop exclude list and history, copy addresses and retake on the snapshot, the maker's swap offer persists with its status.
 - **2026-09-13** Mint NFT: quick drops with the picture stored on Cookie Chain, one wallet approval.

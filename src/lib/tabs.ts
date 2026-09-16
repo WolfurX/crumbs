@@ -12,6 +12,12 @@ export function tabFromHash(hash = location.hash): Tab | null {
   return (TAB_IDS as string[]).includes(id) ? (id as Tab) : null
 }
 
+/** Pages that replace the tool view: only the changelog for now. */
+export type Page = 'changelog'
+export function pageFromHash(hash = location.hash): Page | null {
+  return hash === '#changelog' ? 'changelog' : null
+}
+
 /** Push the tab into the hash so reload, back and links land on it. An offer link on the swap tab is left alone. */
 export function setHashTab(tab: Tab) {
   if (tabFromHash() === tab) return

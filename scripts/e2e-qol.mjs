@@ -30,10 +30,15 @@ const shot = async (name) => { await cdp.screenshot(`shots/${name}.png`); consol
 await cdp.waitFor(`!!document.querySelector('[role=tab][aria-selected=true]')`)
 check('#airdrop opens the Airdrop tab', (await activeTab()) === 'Airdrop')
 
-// 2. changelog under the roadmap, three entries, expandable
-check('changelog shows 3 entries', await $(`document.querySelector('#changelog-title')?.textContent === 'What changed' && document.querySelectorAll('.changelog-list li').length === 3`))
-await $(`[...document.querySelectorAll('.changelog button')].find((b) => b.textContent.includes('entries')).click(), true`)
-check('changelog expands to every entry', await $(`document.querySelectorAll('.changelog-list li').length >= 5`))
+// 2. the changelog is its own page behind the footer link; the tool view hides and comes back
+check('home has no changelog section, footer links to it', await $(`!document.querySelector('.changelog') && document.querySelector('footer a[href="#changelog"]')?.textContent === 'Changelog'`))
+await $(`document.querySelector('footer a[href="#changelog"]').click(), true`)
+await sleep(300)
+check('changelog page shows every entry and hides the tools', await $(`document.querySelector('#changelog-title')?.textContent === 'What changed' && document.querySelectorAll('.changelog-list li').length >= 5 && document.querySelector('.tabs').closest('[hidden]') !== null && document.title.startsWith('Changelog')`))
+await shot('qol-changelog')
+await $(`document.querySelector('.page .back').click(), true`)
+await sleep(300)
+check('back link returns to the tab you were on', await $(`!document.querySelector('.changelog') && document.title === 'Crumbs'`) && (await activeTab()) === 'Airdrop')
 
 // 3. clicking a tab writes the hash; typed input survives a visit to another tab
 await clickTab('Snapshot')
@@ -65,7 +70,7 @@ await $(`history.forward(), true`)
 await sleep(300)
 
 // 6. reload: the snapshot comes back from storage and the hash picks the tab
-localStorage: {
+{
   await $(`localStorage.setItem('crumbs.airdrops', JSON.stringify([{ id: 1, at: Date.now() - 3600e3, symbol: 'COOK', decimals: 9, total: '12500000000', recipients: 47, signatures: ['4NJJ5A6YzR3P7SH5Sv6HNKZvoPnEkL49NXNcNmNQDxnZTofBYAKRKtxPD9h3Lso23wAyPjjrmBf4tpbCztBb5PMm', '4xFVH7egN5eNaCN3aGkCQEUXJqkNSj8RAtCNELMTgdgc66FBoiPLMuSx5eQGt8s8Xc3S1WtsvhKZJjKb2kruFQVX'] /* real cancel txs from this wallet, so the links resolve */ }])), true`)
 }
 await cdp.send('Page.reload')
@@ -169,9 +174,11 @@ await sleep(400)
 await $(`document.querySelector('.history').scrollIntoView({ block: 'center' }), true`)
 await sleep(200)
 await shot('qol-airdrop-phone')
-await $(`document.querySelector('#changelog-title').scrollIntoView({ block: 'start' }), true`)
-await sleep(200)
+await $(`location.hash = '#changelog', true`)
+await sleep(400)
 await shot('qol-changelog-phone')
+await $(`history.back(), true`)
+await sleep(300)
 await cdp.send('Emulation.clearDeviceMetricsOverride')
 
 console.log('--- console ---')
