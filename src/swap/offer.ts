@@ -41,6 +41,18 @@ export function rememberNonce(owner: PublicKey, nonce: PublicKey) {
   try { localStorage.setItem(nonceKey(owner), nonce.toBase58()) } catch { /* ignore */ }
 }
 
+// The maker's last signed offer, so the link and its status outlive a reload or a tab switch.
+const offerKey = (owner: PublicKey) => `crumbs.offer.${owner.toBase58()}`
+export function rememberOffer(owner: PublicKey, encoded: string) {
+  try { localStorage.setItem(offerKey(owner), encoded) } catch { /* ignore */ }
+}
+export function savedOffer(owner: PublicKey): string | null {
+  try { return localStorage.getItem(offerKey(owner)) } catch { return null }
+}
+export function forgetOffer(owner: PublicKey) {
+  try { localStorage.removeItem(offerKey(owner)) } catch { /* ignore */ }
+}
+
 /** Instructions that create a durable nonce account owned by `owner` (owner pays ~0.0015 COOK rent). */
 export async function createNonceIxs(connection: Connection, owner: PublicKey, nonceKeypair: Signer): Promise<TransactionInstruction[]> {
   const lamports = await connection.getMinimumBalanceForRentExemption(NONCE_ACCOUNT_LENGTH)

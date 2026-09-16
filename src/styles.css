@@ -327,3 +327,18 @@ tr.me td { background: var(--accent-soft); }
 .links li:last-child { border-bottom: 0; }
 .links a, .links .linkbtn { display: flex; justify-content: space-between; align-items: center; padding: 0.55rem 0; color: var(--ink); text-decoration: none; width: 100%; }
 .links a:hover, .links .linkbtn:hover { color: var(--accent); }
+
+/* changelog under the roadmap: date column, hairline rows */
+.changelog { margin-top: 1.6rem; }
+.changelog-list { list-style: none; margin: 0.6rem 0 0; padding: 0; }
+.changelog-list li { display: grid; grid-template-columns: 7rem 1fr; gap: 0.8rem; padding: 0.8rem 0; border-bottom: 1px solid var(--line); align-items: start; }
+.changelog-list li:last-child { border-bottom: 0; }
+.changelog-list time { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; padding-top: 0.1rem; }
+.changelog-list p { margin-top: 0.15rem; max-width: 70ch; }
+@media (max-width: 560px) { .changelog-list li { grid-template-columns: 1fr; gap: 0.15rem; } }
+
+/* recent airdrops on the airdrop tab */
+.history { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+.history li { display: grid; grid-template-columns: 5.5rem 1fr auto; gap: 0.6rem; padding: 0.5rem 0; border-bottom: 1px solid var(--line); align-items: baseline; font-size: 0.9rem; }
+.history li:last-child { border-bottom: 0; }
+@media (max-width: 560px) { .history li { grid-template-columns: 5.5rem 1fr; } .history li > :last-child { grid-column: 2; } }

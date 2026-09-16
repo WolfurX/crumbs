@@ -13,7 +13,7 @@ import { renderShareCard } from '../lib/sharecard'
 import { HolderChart } from './HolderChart'
 import { ArtSnapshot } from './Art'
 import { toast } from './Toast'
-import { IconAperture, IconCheck, IconChevronDown, IconCoins, IconCopy, IconDownload, IconExternalLink, IconParachute, IconSearch, IconShieldCheck } from '../icons'
+import { IconAperture, IconCheck, IconChevronDown, IconCoins, IconCopy, IconDownload, IconExternalLink, IconParachute, IconRefresh, IconSearch, IconShieldCheck } from '../icons'
 import { CRUMB_MINT } from '../game/constants'
 
 export interface SnapshotResult {
@@ -49,6 +49,14 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
   const [recent, setRecent] = useState<RecentSnapshot[]>(() => loadRecent())
   const [sharing, setSharing] = useState(false)
   const abort = useRef<AbortController | null>(null)
+  const [, setAgeTick] = useState(0)
+
+  // the age label ("taken 12m ago") moves once a minute while a result is on screen
+  useEffect(() => {
+    if (!result) return
+    const id = setInterval(() => setAgeTick((t) => t + 1), 60_000)
+    return () => clearInterval(id)
+  }, [result])
 
   useEffect(() => {
     loadRegistry().then(setRegistry).catch(() => setRegistry(new Map()))
@@ -175,6 +183,12 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
     navigator.clipboard.writeText(result.token.mint).then(() => toast('Mint address copied'))
   }
 
+  /** The filtered holders as one address per line, ready for any other tool. */
+  function copyAddresses() {
+    if (!view) return
+    navigator.clipboard.writeText(view.rows.map((h) => h.owner).join('\n')).then(() => toast(`${fmtInt(view.rows.length)} addresses copied`))
+  }
+
   const th = (key: SortKey, label: string, right = false) => (
     <th className={right ? 'right' : ''}>
       <button className="th" onClick={() => setSort((s) => ({ key, dir: s.key === key ? ((s.dir * -1) as 1 | -1) : -1 }))} aria-sort={sort.key === key ? (sort.dir === -1 ? 'descending' : 'ascending') : 'none'}>
@@ -262,12 +276,14 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
                   <a className="btn quiet sm" href={addressUrl(result.token.mint)} target="_blank" rel="noreferrer" title="Open on Cookiescan"><IconExternalLink /></a>
                   {result.token.priceUsd !== undefined && <span className="num">{usd(result.token.priceUsd)}</span>}
                   {result.token.marketCap !== undefined && <span className="num">MC {usd(result.token.marketCap)}</span>}
-                  <span>{new Date(result.takenAt).toLocaleString()}</span>
+                  <span title={new Date(result.takenAt).toLocaleString()}>taken {timeAgo(result.takenAt)}</span>
+                  <button className="btn quiet sm" onClick={() => take(result.token.mint)} disabled={!!busy} title="Take this snapshot again now"><IconRefresh /></button>
                 </div>
               </div>
             </div>
             <div className="row">
               <button className="btn" onClick={exportCsv}><IconDownload /> CSV</button>
+              <button className="btn" onClick={copyAddresses} title="One address per line, after the filters"><IconCopy /> Copy addresses</button>
               <button className="btn" onClick={share} disabled={sharing}><IconExternalLink /> {sharing ? 'Rendering…' : 'Share card'}</button>
               <button className="btn primary" onClick={onAirdrop}><IconParachute /> Airdrop to {fmtInt(view.rows.length)}</button>
             </div>

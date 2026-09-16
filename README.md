@@ -30,7 +30,7 @@ Live: https://crumbs-cookie.vercel.app/ (mirror: https://wolfurx.github.io/crumb
 
 **CRUMB.** Proof of play. 100,000,000 max supply, 6 decimals, minted only by registered games through the emission program, 100,000 a day while the first half is minted and halving every time minted supply crosses the halfway mark of what remains. No treasury, no premine, no price anywhere in the app. Holders benefit when the ecosystem decides they should: partner drops, allowlists and votes counted from a CRUMB holder snapshot taken here. Mint `54jTjjds4jezFZvJKnMRAsdrQ2fQ6yLHts356pGXn9g`.
 
-**And around them.** A live line of chain stats under the hero (slot, epoch, throughput, COOK price, tokens indexed), recent snapshots remembered on this device, an install button when the browser offers one, and a link preview card for every share.
+**And around them.** A live line of chain stats under the hero (slot, epoch, throughput, COOK price, tokens indexed), an install button when the browser offers one, and a link preview card for every share. The tab is in the URL (`#airdrop`, `#mint`), so reload, back and links land where you were. Tabs keep what you were doing when you look at another one. The last snapshot, the recent airdrops with their signatures, and a signed swap offer are remembered on the device, nowhere else.
 
 ## Using it
 
@@ -78,6 +78,16 @@ Crumbs is meant to be the toolbox every Cookie Chain community reaches for. Next
 - Holder snapshots of NFT collections, ready for holder-only airdrops.
 
 The site shows the same list. Suggestions go in the issues or as replies to the launch thread.
+
+## Changelog
+
+The site lists what changed under the roadmap. In short:
+
+- **2026-09-16** Quality of life: tabs keep their state and live in the URL, the last snapshot survives a reload, airdrop exclude list and history, copy addresses and retake on the snapshot, the maker's swap offer persists with its status.
+- **2026-09-13** Mint NFT: quick drops with the picture stored on Cookie Chain, one wallet approval.
+- **2026-09-10** `.cook` names everywhere; the clicker cookie and the hero as three.js scenes.
+- **2026-09-06** Swap by link; clicker juice; phone layout.
+- **2026-09-05** Launch: Snapshot, Airdrop, Cleanup, Crumb Clicker and CRUMB.
 
 ## Credits
 

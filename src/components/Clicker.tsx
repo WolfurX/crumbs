@@ -1,5 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { usePrimaryNames } from '../lib/names'
+import { useTabActive } from '../lib/tabs'
 import { Addr } from './Addr'
 import { CookieArt } from './Art'
 import { webglOk } from '../lib/webgl'
@@ -46,6 +47,8 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
   const wallet = useWallet()
   const client = useMemo(() => new GameClient(connection), [connection])
   const owner = wallet.publicKey
+  // the tab stays mounted once opened; polling and the live counter only run while it is on screen
+  const active = useTabActive()
 
   const [game, setGame] = useState<GameState | null>(null)
   const [emission, setEmission] = useState<EmissionState | null>(null)
@@ -100,16 +103,18 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
   const names = usePrimaryNames(connection, board.map((p) => p.owner.toBase58()))
 
   useEffect(() => {
+    if (!active) return
     void load()
     const id = setInterval(load, 20_000)
     return () => clearInterval(id)
-  }, [load])
+  }, [load, active])
 
   // 10 fps counter for the live cookie total
   useEffect(() => {
+    if (!active) return
     const id = setInterval(() => setTick((t) => t + 1), 100)
     return () => clearInterval(id)
-  }, [])
+  }, [active])
 
   const liveCookies = useMemo(() => {
     if (!player) return 0n

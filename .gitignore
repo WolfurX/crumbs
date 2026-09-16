@@ -14,3 +14,4 @@ dist-names
 # engine and script builds, driver screenshots
 dist-*/
 /*.png
+shots/

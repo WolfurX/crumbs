@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import type { SnapshotResult } from './Snapshot'
 import { fetchHolders } from '../lib/das'
@@ -11,8 +11,10 @@ import { looksLikeName, resolveNames } from '../lib/names'
 import { fetchOwnedAccounts, type OwnedAccount } from '../lib/revoke'
 import { loadRegistry, type TokenInfo } from '../lib/tokens'
 import { runBatches, type Batch } from '../lib/txs'
-import { COOK_DECIMALS, COOK_MINT } from '../lib/chain'
-import { fmtAmount, fmtInt, uiToRaw } from '../lib/format'
+import { COOK_DECIMALS, COOK_MINT, isPubkey, txUrl } from '../lib/chain'
+import { fmtAmount, fmtInt, shortAddr, uiToRaw } from '../lib/format'
+import { loadAirdrops, recordAirdrop } from '../lib/history'
+import { timeAgo } from '../lib/recent'
 import { IconArrowRight, IconCheck, IconCoins, IconDownload, IconParachute, IconRefresh } from '../icons'
 
 interface Props {
@@ -44,6 +46,7 @@ export function Airdrop({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
   const [amountUi, setAmountUi] = useState('')
   const [list, setList] = useState('')
   const [topN, setTopN] = useState('')
+  const [exclude, setExclude] = useState('')
   const [minUi, setMinUi] = useState('')
   const [skipProgram, setSkipProgram] = useState(true)
   const [skipSelf, setSkipSelf] = useState(true)
@@ -52,6 +55,8 @@ export function Airdrop({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
+  const [history, setHistory] = useState(() => loadAirdrops())
+  const planId = useRef(0)
 
   useEffect(() => {
     loadRegistry().then(setRegistry).catch(() => {})
@@ -63,6 +68,22 @@ export function Airdrop({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
     fetchOwnedAccounts(connection, pk).then((a) => setOwned(a.filter((x) => x.amount > 0n))).catch(() => {})
     connection.getBalance(pk).then((b) => setCookBalance(BigInt(b))).catch(() => {})
   }, [wallet.publicKey, connection, batches])
+
+  const locked = running || batches.some((b) => b.status !== 'pending')
+
+  // a new snapshot from another tab becomes the recipients and restarts the steps
+  useEffect(() => {
+    if (!snapshot || locked) return
+    setSource('snapshot')
+    setPlan(null)
+    setBatches([])
+    setStep(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot?.takenAt])
+
+  /** Addresses on the exclude list; .cook names on it are resolved when the plan is made. */
+  const excludeSet = useMemo(() => new Set(exclude.split(/\r?\n/).map((l) => l.trim()).filter(isPubkey)), [exclude])
+  const excludeNames = useMemo(() => exclude.split(/\r?\n/).map((l) => l.trim()).filter(looksLikeName), [exclude])
 
   const assetOptions = useMemo(() => {
     const opts = [{ mint: COOK_MINT, label: `COOK · ${fmtAmount(cookBalance, COOK_DECIMALS)}`, decimals: COOK_DECIMALS, balance: cookBalance }]
@@ -77,12 +98,12 @@ export function Airdrop({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
   const snapshotRows = useMemo(() => {
     if (!snapshot) return []
     const min = minUi.trim() ? BigInt(Math.floor(Number(minUi) * 10 ** snapshot.token.decimals)) : 0n
-    let rows = snapshot.holders.filter((h) => (!skipProgram || !h.isProgram) && h.amount >= min && !h.frozen)
+    let rows = snapshot.holders.filter((h) => (!skipProgram || !h.isProgram) && h.amount >= min && !h.frozen && !excludeSet.has(h.owner))
     if (skipSelf && wallet.publicKey) rows = rows.filter((h) => h.owner !== wallet.publicKey!.toBase58())
     const n = parseInt(topN, 10)
     if (n > 0) rows = rows.slice(0, n)
     return rows
-  }, [snapshot, minUi, skipProgram, skipSelf, topN, wallet.publicKey])
+  }, [snapshot, minUi, skipProgram, skipSelf, topN, excludeSet, wallet.publicKey])
 
   const listCount = useMemo(() => list.split(/\r?\n/).filter((l) => l.trim()).length, [list])
 
@@ -136,7 +157,18 @@ export function Airdrop({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
           recipients = recipients.map((r) => ({ ...r, owner: found.get(r.owner)?.toBase58() ?? r.owner }))
         }
       }
+      if (excludeSet.size || excludeNames.length) {
+        const drop = new Set(excludeSet)
+        if (excludeNames.length) {
+          setBusy('Resolving the exclude list…')
+          const found = await resolveNames(connection, excludeNames)
+          for (const pk of found.values()) if (pk) drop.add(pk.toBase58())
+        }
+        recipients = recipients.filter((r) => !drop.has(r.owner))
+        if (!recipients.length) throw new Error('Every recipient is on the exclude list.')
+      }
       const p = await planAirdrop(connection, wallet.publicKey, resolved, recipients)
+      planId.current = Date.now()
       if (!p.recipients.length) throw new Error(p.belowRent ? `Every recipient would end up under the ${fmtAmount(p.rentMinimum, COOK_DECIMALS)} COOK rent minimum. Send more per wallet.` : 'No valid recipients.')
       setPlan(p)
       setBatches(p.batches)
@@ -166,6 +198,14 @@ export function Airdrop({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
       })
       const ok = plan.batches.filter((b) => b.status === 'confirmed').reduce((n, b) => n + b.items.length, 0)
       if (plan.batches.every((b) => b.status === 'confirmed')) toast(`Airdrop complete: ${fmtInt(ok)} wallet${ok === 1 ? '' : 's'} received ${plan.asset.symbol}`)
+      const signatures = plan.batches.filter((b) => b.status === 'confirmed' && b.signature).map((b) => b.signature!)
+      if (signatures.length) {
+        // recipients are in batch order, so walk the batches to sum what actually landed
+        let total = 0n
+        let i = 0
+        for (const b of plan.batches) for (let k = 0; k < b.items.length; k++, i++) if (b.status === 'confirmed') total += plan.recipients[i].amount
+        setHistory(recordAirdrop({ id: planId.current, at: Date.now(), symbol: plan.asset.symbol, decimals: plan.asset.decimals, total: total.toString(), recipients: ok, signatures }))
+      }
     } finally {
       setRunning(false)
     }
@@ -183,7 +223,6 @@ export function Airdrop({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
   const done = batches.length > 0 && batches.every((b) => b.status === 'confirmed')
   const canRetry = batches.some((b) => b.status === 'failed' || b.status === 'expired')
   const sentRecipients = batches.filter((b) => b.status === 'confirmed').reduce((n, b) => n + b.items.length, 0)
-  const locked = running || batches.some((b) => b.status !== 'pending')
 
   function exportResults() {
     if (!plan) return
@@ -259,6 +298,10 @@ export function Airdrop({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
                   <label className="field"><span>Min {snapshot.token.symbol} balance</span><input className="input num" inputMode="decimal" placeholder="0" value={minUi} onChange={(e) => setMinUi(e.target.value)} /></label>
                   <label className="field"><span>Top N holders only</span><input className="input num" inputMode="numeric" placeholder="all" value={topN} onChange={(e) => setTopN(e.target.value)} /></label>
                 </div>
+                <label className="field">
+                  <span>Exclude wallets, one per line: address or .cook name (names are checked at review)</span>
+                  <textarea className="input" style={{ minHeight: 64 }} spellCheck={false} placeholder={'treasury.cook\n8xk3…Wq9d'} value={exclude} onChange={(e) => setExclude(e.target.value)} />
+                </label>
               </div>
             ) : (
               <div className="notice" style={{ marginTop: '0.9rem' }}>
@@ -277,6 +320,24 @@ export function Airdrop({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
               Continue with {fmtInt(recipientCount)} recipient{recipientCount === 1 ? '' : 's'} <IconArrowRight />
             </button>
           </div>
+          {history.length > 0 && (
+            <>
+              <hr className="hr" />
+              <div className="muted small">Airdrops sent from this browser</div>
+              <ul className="history">
+                {history.map((h) => (
+                  <li key={h.id}>
+                    <span className="muted" title={new Date(h.at).toLocaleString()}>{timeAgo(h.at)}</span>
+                    <span><b className="num">{fmtInt(h.recipients)}</b> wallet{h.recipients === 1 ? '' : 's'} got <span className="num">{fmtAmount(BigInt(h.total), h.decimals, true)} {h.symbol}</span></span>
+                    <span className="small">
+                      <a className="mono" href={txUrl(h.signatures[0])} target="_blank" rel="noreferrer">{shortAddr(h.signatures[0], 4, 4)}</a>
+                      {h.signatures.length > 1 && <span className="muted"> +{h.signatures.length - 1} more</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </section>
       )}
 

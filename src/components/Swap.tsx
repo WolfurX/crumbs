@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { Keypair, PublicKey, Transaction } from '@solana/web3.js'
-import { buildOfferTx, cancelIx, createNonceIxs, decodeOffer, encodeOffer, offerFromHash, offerIsOpen, offerLink, readNonce, rememberNonce, resolveLeg, savedNonce, simulateOffer, type Leg, type Offer } from '../swap/offer'
+import { buildOfferTx, cancelIx, createNonceIxs, decodeOffer, encodeOffer, forgetOffer, offerFromHash, offerIsOpen, offerLink, readNonce, rememberNonce, rememberOffer, resolveLeg, savedNonce, savedOffer, simulateOffer, type Leg, type Offer } from '../swap/offer'
 import { fetchOwnedAccounts, type OwnedAccount } from '../lib/revoke'
 import { loadRegistry, searchRegistry, type TokenInfo } from '../lib/tokens'
 import { COOK_DECIMALS, COOK_MINT, isPubkey, txUrl } from '../lib/chain'
@@ -10,6 +10,7 @@ import { Addr } from './Addr'
 import { fmtAmount, shortAddr } from '../lib/format'
 import { explainError } from '../lib/txs'
 import { toast } from './Toast'
+import { useTabActive } from '../lib/tabs'
 import { IconArrowRight, IconCheck, IconCopy, IconLink, IconX } from '../icons'
 
 /** Peer-to-peer swap as a link: maker signs first against a durable nonce, taker signs and sends. */
@@ -33,7 +34,9 @@ export function Swap() {
   const [taker, setTaker] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [made, setMade] = useState<{ link: string; offer: Offer } | null>(null)
+  // open: true while the nonce still matches, false once taken or cancelled, undefined while checking
+  const [made, setMade] = useState<{ link: string; offer: Offer; open?: boolean } | null>(null)
+  const active = useTabActive()
   const [nonceState, setNonceState] = useState<'none' | 'ready' | 'busy'>('none')
 
   useEffect(() => {
@@ -46,6 +49,28 @@ export function Swap() {
     const n = savedNonce(owner)
     if (n) readNonce(connection, n).then((acc) => setNonceState(acc ? (acc.nonce ? 'busy' : 'ready') : 'none')).catch(() => setNonceState('none'))
   }, [owner, connection, made])
+
+  // the maker's last offer comes back from local storage; its status is re-read every time the tab is opened
+  useEffect(() => {
+    if (!owner || !active) return
+    const encoded = savedOffer(owner)
+    if (!encoded) return
+    let offer: Offer
+    try {
+      offer = decodeOffer(encoded)
+    } catch {
+      forgetOffer(owner)
+      return
+    }
+    if (!offer.maker.equals(owner)) {
+      forgetOffer(owner)
+      return
+    }
+    const link = offerLink(encoded)
+    offerIsOpen(connection, offer)
+      .then((open) => setMade((m) => (m && m.link === link ? { ...m, open } : { link, offer, open })))
+      .catch(() => setMade((m) => m ?? { link, offer, open: undefined }))
+  }, [owner, connection, active])
 
   // decode an incoming offer once
   useEffect(() => {
@@ -122,7 +147,8 @@ export function Swap() {
       const signed = await wallet.signTransaction(tx)
       const encoded = encodeOffer(signed)
       const offer = decodeOffer(encoded) // proves the link is valid before showing it
-      setMade({ link: offerLink(encoded), offer })
+      rememberOffer(owner, encoded)
+      setMade({ link: offerLink(encoded), offer, open: true })
       toast('Offer signed. Share the link with the counterparty.')
     } catch (e) {
       setError(explainError(e))
@@ -136,6 +162,7 @@ export function Swap() {
     setBusy('Cancelling…')
     try {
       await signAndSend(new Transaction().add(cancelIx(owner, nonceAccount)))
+      forgetOffer(owner)
       setMade(null)
       toast('Offer cancelled. Any copy of the link is now void.')
     } catch (e) {
@@ -235,22 +262,33 @@ export function Swap() {
             </label>
             <div className="row" style={{ marginTop: '1rem' }}>
               <button className="btn primary" disabled={!!busy || !giveAmt || !getAmt || !taker} onClick={create}><IconLink /> {busy ?? 'Sign and make the link'}</button>
-              {nonceState !== 'none' && savedNonce(owner) && <button className="btn quiet" disabled={!!busy} onClick={() => cancel(savedNonce(owner)!)}>Cancel my open offer</button>}
+              {nonceState !== 'none' && savedNonce(owner) && !made && <button className="btn quiet" disabled={!!busy} onClick={() => cancel(savedNonce(owner)!)}>Cancel my open offer</button>}
               {error && <span className="err">{error}</span>}
             </div>
             <p className="small muted" style={{ marginTop: '.6rem' }}>Offers are addressed to one wallet. Anyone else opening the link sees the terms but cannot take it. One open offer per wallet at a time; making a new one voids the previous link.</p>
           </>
         )}
-        {made && (
+        {made && owner && (
           <div className="notice" style={{ marginTop: '1rem' }}>
             <div className="row between">
-              <b>Offer ready</b>
+              <span className="row" style={{ gap: '0.5rem' }}>
+                <b>{made.open === false ? 'Offer closed' : 'Your open offer'}</b>
+                <span className="pill">{made.open === undefined ? 'checking…' : made.open ? 'open' : 'taken or cancelled'}</span>
+              </span>
               <span className="small muted">{legText(made.offer.give)} <IconArrowRight /> {legText(made.offer.get)} with <Addr addr={made.offer.taker.toBase58()} name={names.get(made.offer.taker.toBase58())} /></span>
             </div>
-            <div className="row" style={{ marginTop: '.5rem' }}>
-              <input className="input mono small" readOnly value={made.link} onFocus={(e) => e.currentTarget.select()} />
-              <button className="btn" onClick={() => navigator.clipboard.writeText(made.link).then(() => toast('Offer link copied'))}><IconCopy /> Copy link</button>
-            </div>
+            {made.open !== false ? (
+              <div className="row" style={{ marginTop: '.5rem' }}>
+                <input className="input mono small" readOnly value={made.link} onFocus={(e) => e.currentTarget.select()} />
+                <button className="btn" onClick={() => navigator.clipboard.writeText(made.link).then(() => toast('Offer link copied'))}><IconCopy /> Copy link</button>
+                <button className="btn quiet" disabled={!!busy || made.open === undefined} onClick={() => cancel(made.offer.nonceAccount)}><IconX /> Cancel offer</button>
+              </div>
+            ) : (
+              <div className="row" style={{ marginTop: '.5rem' }}>
+                <span className="small muted">The link no longer works. The counterparty took it, or you cancelled it.</span>
+                <button className="btn quiet" onClick={() => { forgetOffer(owner); setMade(null) }}>Dismiss</button>
+              </div>
+            )}
           </div>
         )}
       </section>
