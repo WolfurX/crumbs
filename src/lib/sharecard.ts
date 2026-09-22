@@ -11,6 +11,8 @@ export interface CardInput {
   top10Pct: number
   poolsPct: number
   takenAt: number
+  /** An NFT collection: amounts are pieces held. */
+  collection?: boolean
   site: string
 }
 
@@ -68,9 +70,9 @@ export async function renderShareCard(c: CardInput): Promise<Blob> {
   // tiles
   const tiles: [string, string][] = [
     ['Holders', fmtInt(c.holders.length)],
-    ['Held by them', fmtAmount(c.held, c.decimals, true)],
+    c.collection ? ['Pieces held', fmtInt(Number(c.held))] : ['Held by them', fmtAmount(c.held, c.decimals, true)],
     ['Top 10 share', fmtPct(c.top10Pct)],
-    ['In pools and vaults', fmtPct(c.poolsPct)],
+    [c.collection ? 'Held by programs' : 'In pools and vaults', fmtPct(c.poolsPct)],
   ]
   const tx0 = 60
   const ty0 = 250

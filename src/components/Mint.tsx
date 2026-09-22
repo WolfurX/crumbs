@@ -9,7 +9,7 @@ import { looksLikeName, resolveNames } from '../lib/names'
 import { fmtBytes, prepareImage, type PreparedImage } from '../mint/image'
 import { DEFAULT_ROYALTY_BPS, DESCRIPTION_LIMIT, MAX_PIECES, NAME_LIMIT, ROYALTY_MAX_BPS, SYMBOL_MAX, deriveSymbol, estimate, fetchRents, pieceName, type DropForm, type Estimate, type Rents } from '../mint/plan'
 import { forgetDrop, loadDrop, newDrop, refundDrop, runDrop, type DropState, type Progress } from '../mint/engine'
-import { IconChevronDown, IconCopy, IconExternalLink, IconShare2 } from '../icons'
+import { IconChevronDown, IconCopy, IconExternalLink, IconShare2, IconUsers } from '../icons'
 
 type Dest = 'me' | 'holders' | 'list'
 type Phase = 'form' | 'confirm' | 'running' | 'done'
@@ -22,9 +22,11 @@ const approx = (n: bigint) => (Number(n) / 1e9).toFixed(n < 100_000_000n ? 2 : 1
 interface Props {
   snapshot: SnapshotResult | null
   onNeedSnapshot: () => void
+  /** Opens the Snapshot tab on a collection. */
+  onSnapshot: (mint: string) => void
 }
 
-export function Mint({ snapshot, onNeedSnapshot }: Props) {
+export function Mint({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
   const { connection } = useConnection()
   const wallet = useWallet()
   const owner = wallet.publicKey
@@ -238,6 +240,7 @@ export function Mint({ snapshot, onNeedSnapshot }: Props) {
                 <li><button className="linkbtn" onClick={() => share(s)}>Share <IconShare2 /></button></li>
               </ul>
               <div className="row" style={{ marginTop: '1rem' }}>
+                <button className="btn" onClick={() => onSnapshot(s.collection.mint)}><IconUsers /> Snapshot the holders</button>
                 <button className="btn" onClick={reset}>Mint another</button>
               </div>
             </div>

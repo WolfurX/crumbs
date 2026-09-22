@@ -8,7 +8,7 @@ Live: https://crumbs-cookie.vercel.app/ (mirror: https://wolfurx.github.io/crumb
 
 ## What it does
 
-**Snapshot.** Type a token symbol or mint and get every holder from the Cookiescan DAS index, folded by owner (a wallet with several token accounts counts once). Program-owned accounts such as pools, vaults and escrows are flagged and hidden by default so a snapshot means people, not liquidity. You get holder count, a concentration bar (largest holder, top 10, top 50, everyone else), a top-10 chart, a sortable and searchable table, a CSV export, and a share card: a 1200x630 image of the distribution for X or Telegram, rendered in your browser.
+**Snapshot.** Type a token symbol or mint and get every holder from the Cookiescan DAS index, folded by owner (a wallet with several token accounts counts once). Paste an NFT collection instead and get every wallet holding its pieces with the count each holds, read from the chain itself: the pieces from Token Metadata, their owners from the token accounts; a finished Mint NFT drop links straight to it. Program-owned accounts such as pools, vaults and escrows are flagged and hidden by default so a snapshot means people, not liquidity. You get holder count, a concentration bar (largest holder, top 10, top 50, everyone else), a top-10 chart, a sortable and searchable table, a CSV export, and a share card: a 1200x630 image of the distribution for X or Telegram, rendered in your browser.
 
 ![Share card](docs/share-card.png)
 
@@ -26,7 +26,7 @@ Live: https://crumbs-cookie.vercel.app/ (mirror: https://wolfurx.github.io/crumb
 
 ![Mint NFT: a quick drop ready to mint](docs/mint.png)
 
-**Clicker.** An idle clicker where every click is a transaction on Cookie Chain. Your wallet signs once to create a player and fund a browser session key with 0.1 COOK (about 20,000 clicks); the session key signs every click, purchase and claim silently. The program accepts three clicks per second and counts 5,000 a day; eight bakers (Cursor to Cookie Jar) produce cookies while you are away, each unit 15% dearer than the last. Every UTC day's cookie and click totals are recorded on chain and a fixed pool of CRUMB for that day is split by share, 70% by cookies produced and 30% by counted clicks. Leaderboard and totals come straight from the program accounts.
+**Clicker.** An idle clicker where every click is a transaction on Cookie Chain. Your wallet signs once to create a player and fund a browser session key with 0.1 COOK (about 20,000 clicks); the session key signs every click, purchase and claim silently. The program accepts three clicks per second and counts 5,000 a day; eight bakers (Cursor to Cookie Jar) produce cookies while you are away, each unit 15% dearer than the last; the ones you own stand around the cookie as line art and send crumbs its way, the rest wait as dashed outlines. Every UTC day's cookie and click totals are recorded on chain and a fixed pool of CRUMB for that day is split by share, 70% by cookies produced and 30% by counted clicks. Leaderboard and totals come straight from the program accounts.
 
 **CRUMB.** Proof of play. 100,000,000 max supply, 6 decimals, minted only by registered games through the emission program, 100,000 a day while the first half is minted and halving every time minted supply crosses the halfway mark of what remains. No treasury, no premine, no price anywhere in the app. Holders benefit when the ecosystem decides they should: partner drops, allowlists and votes counted from a CRUMB holder snapshot taken here. Mint `54jTjjds4jezFZvJKnMRAsdrQ2fQ6yLHts356pGXn9g`.
 
@@ -75,7 +75,6 @@ Deployed from `main` to Vercel (production) and, as a mirror, to GitHub Pages by
 Crumbs is meant to be the toolbox every Cookie Chain community reaches for. Next in line:
 
 - Open swap offers anyone can take, which needs a small escrow program.
-- Holder snapshots of NFT collections, ready for holder-only airdrops.
 
 The site shows the same list. Suggestions go in the issues or as replies to the launch thread.
 
@@ -83,6 +82,7 @@ The site shows the same list. Suggestions go in the issues or as replies to the 
 
 The site has the full list at https://crumbs-cookie.vercel.app/#changelog (footer link). In short:
 
+- **2026-09-23** NFT holder snapshots: paste a collection, get every wallet holding its pieces, read from the chain; a finished Mint NFT drop links to it. The bakers you own stand around the clicker cookie.
 - **2026-09-16** Quality of life: tabs keep their state and live in the URL, the last snapshot survives a reload, airdrop exclude list and history, copy addresses and retake on the snapshot, the maker's swap offer persists with its status.
 - **2026-09-13** Mint NFT: quick drops with the picture stored on Cookie Chain, one wallet approval.
 - **2026-09-10** `.cook` names everywhere; the clicker cookie and the hero as three.js scenes.

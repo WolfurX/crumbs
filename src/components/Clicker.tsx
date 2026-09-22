@@ -21,6 +21,7 @@ const TOPUP_LAMPORTS = 100_000_000 // 0.1 COOK, about 20,000 clicks
 const CLICK_GAP_MS = 480 // the program takes two clicks per second
 
 const CookieScene = lazy(() => import('./CookieScene'))
+const BakeryScene = lazy(() => import('./BakeryScene'))
 
 /** The 3D cookie when the browser can draw it, the flat one otherwise and while the chunk loads. */
 function CookieView({ big = false, shake }: { big?: boolean; shake?: number }) {
@@ -321,11 +322,14 @@ export function Clicker({ onSnapshot }: { onSnapshot: (mint: string) => void }) 
               <div className="num big">{fmtCookies(liveCookies)}</div>
               <div className="muted small">cookies · {fmtCps(player.cpsMilli)} per second · +{fmtCookies(clickPower)} per click</div>
             </div>
-            <div className="cookie-wrap">
-              <button className="cookie-btn" onClick={click} disabled={!session || sessionLow} aria-label="Click the cookie">
-                <CookieView big shake={fails} />
-              </button>
-              {pops.map((p) => <span key={p.id} className="pop" style={{ left: p.x, top: p.y }}>{p.text}</span>)}
+            <div className={`bakery-stage${webglOk() ? ' with-bakery' : ''}`}>
+              {webglOk() && <Suspense fallback={null}><BakeryScene owned={player.owned} /></Suspense>}
+              <div className="cookie-wrap">
+                <button className="cookie-btn" onClick={click} disabled={!session || sessionLow} aria-label="Click the cookie">
+                  <CookieView big shake={fails} />
+                </button>
+                {pops.map((p) => <span key={p.id} className="pop" style={{ left: p.x, top: p.y }}>{p.text}</span>)}
+              </div>
             </div>
             {away !== null && away > 0n && <p className="small ink2 away">While you were away your bakers made <b className="num">{fmtCookies(away)}</b> cookies. They land with your next click.</p>}
             <div className="row between small muted">

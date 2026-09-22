@@ -3,6 +3,7 @@ import { useConnection } from '@solana/wallet-adapter-react'
 import { PublicKey } from '@solana/web3.js'
 import { getMint } from '@solana/spl-token'
 import { fetchHolders, type Holder } from '../lib/das'
+import { fetchCollectionHolders, readNftMeta } from '../lib/collection'
 import { loadRegistry, searchRegistry, type TokenInfo } from '../lib/tokens'
 import { usePrimaryNames } from '../lib/names'
 import { Addr } from './Addr'
@@ -21,6 +22,8 @@ export interface SnapshotResult {
   holders: Holder[]
   total: bigint
   takenAt: number
+  /** Set for an NFT collection: amounts are pieces held. */
+  kind?: 'collection'
 }
 
 interface Props {
@@ -41,6 +44,8 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
   const [registry, setRegistry] = useState<Map<string, TokenInfo> | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** The collection a pasted NFT belongs to, offered instead of a one-holder snapshot. */
+  const [pieceOf, setPieceOf] = useState<string | null>(null)
   const [hideProgram, setHideProgram] = useState(true)
   const [minUi, setMinUi] = useState('')
   const [search, setSearch] = useState('')
@@ -78,24 +83,43 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
     const ac = new AbortController()
     abort.current = ac
     setError(null)
+    setPieceOf(null)
     setBusy('Reading token…')
     try {
       if (mint === COOK_MINT) throw new Error('Native COOK has no token accounts to snapshot. Pick a token.')
       const pk = new PublicKey(mint)
       let token = registry?.get(mint)
+      let holders: Holder[] | null = null
+      let kind: SnapshotResult['kind']
       if (!token) {
         const info = await connection.getAccountInfo(pk)
         if (!info) throw new Error('No account at that address on Cookie Chain.')
-        if (!info.owner.equals(TOKEN_PROGRAM) && !info.owner.equals(TOKEN_2022_PROGRAM)) throw new Error('That address is not a token mint.')
+        if (!info.owner.equals(TOKEN_PROGRAM) && !info.owner.equals(TOKEN_2022_PROGRAM)) throw new Error('That address is not a token or an NFT collection.')
         const m = await getMint(connection, pk, 'confirmed', info.owner)
-        token = mint === CRUMB_MINT.toBase58() ? { mint, symbol: 'CRUMB', name: 'Crumb, proof of play', decimals: m.decimals } : { mint, symbol: shortAddr(mint, 4, 3), name: 'Unlisted token', decimals: m.decimals }
+        // a one of one is an NFT: a collection when pieces point at it, otherwise a single piece
+        const nft = m.decimals === 0 && m.supply === 1n ? await readNftMeta(connection, pk) : null
+        if (nft) {
+          setBusy('Finding the pieces…')
+          holders = await fetchCollectionHolders(connection, pk, (note) => !ac.signal.aborted && setBusy(note))
+          if (ac.signal.aborted) return
+          if (holders) {
+            token = { mint, symbol: nft.symbol || shortAddr(mint, 4, 3), name: nft.name || 'NFT collection', decimals: 0 }
+            kind = 'collection'
+          } else if (nft.collection?.verified) {
+            setPieceOf(nft.collection.key)
+            return
+          }
+        }
+        token ??= mint === CRUMB_MINT.toBase58() ? { mint, symbol: 'CRUMB', name: 'Crumb, proof of play', decimals: m.decimals } : { mint, symbol: shortAddr(mint, 4, 3), name: 'Unlisted token', decimals: m.decimals }
       }
-      setBusy('Fetching holders…')
-      const holders = await fetchHolders(mint, (n) => setBusy(`Fetching holders… ${fmtInt(n)} accounts`), ac.signal)
+      if (!holders) {
+        setBusy('Fetching holders…')
+        holders = await fetchHolders(mint, (n) => setBusy(`Fetching holders… ${fmtInt(n)} accounts`), ac.signal)
+      }
       if (ac.signal.aborted) return
       const total = holders.reduce((n, h) => n + h.amount, 0n)
       const takenAt = Date.now()
-      onResult({ token, holders, total, takenAt })
+      onResult({ token, holders, total, takenAt, kind })
       setRecent(pushRecent({ mint, symbol: token.symbol, holders: holders.filter((h) => !h.isProgram).length, takenAt }))
       setQuery('')
       setSearch('')
@@ -138,12 +162,13 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
   }, [result, hideProgram, minUi, sort])
   const names = usePrimaryNames(connection, view?.table.slice(0, 500).map((h) => h.owner) ?? [])
   const q = search.trim().toLowerCase()
+  const nft = result?.kind === 'collection'
   const table = !view ? [] : q ? view.table.filter((h) => h.owner.toLowerCase().includes(q) || names.get(h.owner)?.includes(q)) : view.table
 
   function exportCsv() {
     if (!result || !view) return
     const d = result.token.decimals
-    const lines = ['rank,owner,balance,share_pct,accounts,program_account', ...view.rows.map((h, i) => `${i + 1},${h.owner},${fmtAmount(h.amount, d).replace(/,/g, '')},${view.pct(h.amount).toFixed(3)},${h.accounts},${h.isProgram}`)]
+    const lines = [`rank,owner,${nft ? 'pieces' : 'balance'},share_pct,accounts,program_account`, ...view.rows.map((h, i) => `${i + 1},${h.owner},${fmtAmount(h.amount, d).replace(/,/g, '')},${view.pct(h.amount).toFixed(3)},${h.accounts},${h.isProgram}`)]
     download(new Blob([lines.join('\n')], { type: 'text/csv' }), `${result.token.symbol || 'token'}-holders-${new Date(result.takenAt).toISOString().slice(0, 10)}.csv`)
     toast(`CSV with ${fmtInt(view.rows.length)} holders saved`)
   }
@@ -162,6 +187,7 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
         top10Pct: view.top10Pct,
         poolsPct: view.poolsPct,
         takenAt: result.takenAt,
+        collection: nft,
         site: location.host + (import.meta.env.BASE_URL === '/' ? '' : import.meta.env.BASE_URL.replace(/\/$/, '')),
       })
       const file = new File([blob], `${result.token.symbol || 'token'}-holders.png`, { type: 'image/png' })
@@ -202,12 +228,12 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
       <section className={`card${result ? '' : ' empty'}`}>
         <div>
           <h2>Holder snapshot</h2>
-          <p className="lead">Every wallet holding a token, straight from the Cookiescan index. Filter it, export it, share it, airdrop to it.</p>
+          <p className="lead">Every wallet holding a token or pieces of an NFT collection. Filter it, export it, share it, airdrop to it.</p>
           <div className="field" style={{ position: 'relative' }}>
-            <span>Token mint or symbol</span>
+            <span>Token or NFT collection</span>
             <input
               className="input mono"
-              placeholder="e.g. bCOOK or EkPafx58…"
+              placeholder="e.g. bCOOK, a mint or a collection"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -241,6 +267,11 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
             </button>
             {busy && <span className="muted">{busy}</span>}
             {error && <span className="err">{error}</span>}
+            {pieceOf && (
+              <span className="muted">
+                That is one NFT of a collection. <button className="btn quiet sm" onClick={() => take(pieceOf)}>Snapshot the collection</button>
+              </span>
+            )}
           </div>
           {!result && recent.length > 0 && (
             <div className="recent">
@@ -269,6 +300,7 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
                   {result.token.symbol}
                   {result.token.verified && <span title="Listed as verified on Cookiescan" style={{ color: 'var(--accent)', fontSize: '1rem', display: 'inline-flex' }}><IconShieldCheck /></span>}
                   <span className="muted" style={{ fontWeight: 400 }}>{result.token.name}</span>
+                  {nft && <span className="pill">NFT collection</span>}
                 </h2>
                 <div className="small muted row" style={{ gap: '0.5rem' }}>
                   <span className="mono">{shortAddr(result.token.mint, 6, 6)}</span>
@@ -291,9 +323,9 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
 
           <div className="tiles" style={{ marginTop: '1rem' }}>
             <div className="tile"><div className="label">Holders</div><div className="value num">{fmtInt(view.rows.length)}</div></div>
-            <div className="tile"><div className="label">Held by them</div><div className="value num">{fmtAmount(view.held, result.token.decimals, true)}</div></div>
+            <div className="tile"><div className="label">{nft ? 'Pieces held' : 'Held by them'}</div><div className="value num">{nft ? fmtInt(Number(view.held)) : fmtAmount(view.held, result.token.decimals, true)}</div></div>
             <div className="tile"><div className="label">Top 10 share</div><div className="value num">{fmtPct(view.top10Pct)}</div></div>
-            <div className="tile"><div className="label">In pools and vaults</div><div className="value num">{fmtPct(view.poolsPct)}</div></div>
+            <div className="tile"><div className="label">{nft ? 'Held by programs' : 'In pools and vaults'}</div><div className="value num">{fmtPct(view.poolsPct)}</div></div>
           </div>
 
           <div className="conc" aria-label="Concentration">
@@ -322,7 +354,7 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
           <div className="row" style={{ margin: '0.9rem 0' }}>
             <label className="check"><input type="checkbox" checked={hideProgram} onChange={(e) => setHideProgram(e.target.checked)} /> Hide program accounts (pools, vaults, escrows)</label>
             <label className="field" style={{ gridTemplateColumns: 'auto 120px', display: 'grid', alignItems: 'center', gap: '0.5rem' }}>
-              <span>Min balance</span>
+              <span>{nft ? 'Min pieces' : 'Min balance'}</span>
               <input className="input num" inputMode="decimal" value={minUi} onChange={(e) => setMinUi(e.target.value)} placeholder="0" />
             </label>
           </div>
@@ -340,7 +372,7 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
           <div className="tablewrap">
             <table>
               <thead>
-                <tr><th>#</th>{th('owner', 'Owner')}{th('balance', 'Balance', true)}<th className="right">Share</th>{th('accounts', '', true)}</tr>
+                <tr><th>#</th>{th('owner', 'Owner')}{th('balance', nft ? 'Pieces' : 'Balance', true)}<th className="right">Share</th>{th('accounts', '', true)}</tr>
               </thead>
               <tbody>
                 {table.slice(0, shown).map((h) => (
@@ -349,7 +381,7 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
                     <td><Addr addr={h.owner} name={names.get(h.owner)} /></td>
                     <td className="right num">{fmtAmount(h.amount, result.token.decimals)}</td>
                     <td className="right num muted">{fmtPct(view.pct(h.amount))}</td>
-                    <td className="right">{h.isProgram && <span className="pill">program</span>}{h.frozen && <span className="pill">frozen</span>}{h.accounts > 1 && <span className="pill">{h.accounts} accounts</span>}</td>
+                    <td className="right">{h.isProgram && <span className="pill">program</span>}{h.frozen && <span className="pill">frozen</span>}{h.accounts > 1 && !nft && <span className="pill">{h.accounts} accounts</span>}</td>
                   </tr>
                 ))}
               </tbody>

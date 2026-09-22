@@ -1,12 +1,6 @@
-import { IconLink, IconUsers } from '../icons'
+import { IconLink } from '../icons'
 
 const ITEMS = [
-  {
-    icon: IconUsers,
-    name: 'NFT collection snapshots',
-    text: 'Every holder of a collection, with counts per wallet, ready for a holder-only airdrop.',
-    status: 'planned',
-  },
   {
     icon: IconLink,
     name: 'Open swap offers',

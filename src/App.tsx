@@ -136,7 +136,7 @@ export default function App() {
       {panel('swap', <Swap />)}
       {panel('clicker', <Clicker onSnapshot={snapshotOf} />)}
       {panel('crumb', <Crumb onSnapshot={snapshotOf} />)}
-      {panel('mint', <Mint snapshot={snapshot} onNeedSnapshot={() => setTab('snapshot')} />)}
+      {panel('mint', <Mint snapshot={snapshot} onNeedSnapshot={() => setTab('snapshot')} onSnapshot={snapshotOf} />)}
 
       <Roadmap />
       </div>

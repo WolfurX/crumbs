@@ -295,7 +295,7 @@ export function Airdrop({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
                   <label className="check"><input type="checkbox" checked={skipSelf} onChange={(e) => setSkipSelf(e.target.checked)} /> Skip my wallet</label>
                 </div>
                 <div className="grid2">
-                  <label className="field"><span>Min {snapshot.token.symbol} balance</span><input className="input num" inputMode="decimal" placeholder="0" value={minUi} onChange={(e) => setMinUi(e.target.value)} /></label>
+                  <label className="field"><span>{snapshot.kind === 'collection' ? 'Min pieces held' : `Min ${snapshot.token.symbol} balance`}</span><input className="input num" inputMode="decimal" placeholder="0" value={minUi} onChange={(e) => setMinUi(e.target.value)} /></label>
                   <label className="field"><span>Top N holders only</span><input className="input num" inputMode="numeric" placeholder="all" value={topN} onChange={(e) => setTopN(e.target.value)} /></label>
                 </div>
                 <label className="field">

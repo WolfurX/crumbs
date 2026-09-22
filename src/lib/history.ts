@@ -8,6 +8,8 @@ export interface StoredSnapshot {
   holders: Holder[]
   total: bigint
   takenAt: number
+  /** Set for an NFT collection: amounts are pieces held. */
+  kind?: 'collection'
 }
 
 const SNAPSHOT_KEY = 'crumbs.snapshot'
@@ -17,7 +19,7 @@ export function saveSnapshot(s: StoredSnapshot) {
   if (s.holders.length > SNAPSHOT_MAX_HOLDERS) return
   try {
     const holders = s.holders.map((h) => [h.owner, h.amount.toString(), h.accounts, h.isProgram ? 1 : 0, h.frozen ? 1 : 0])
-    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({ v: 1, token: s.token, total: s.total.toString(), takenAt: s.takenAt, holders }))
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({ v: 1, token: s.token, total: s.total.toString(), takenAt: s.takenAt, kind: s.kind, holders }))
   } catch {
     /* private mode or quota: the snapshot just does not persist */
   }
@@ -27,12 +29,13 @@ export function loadSnapshot(): StoredSnapshot | null {
   try {
     const raw = localStorage.getItem(SNAPSHOT_KEY)
     if (!raw) return null
-    const d = JSON.parse(raw) as { v: number; token: TokenInfo; total: string; takenAt: number; holders: [string, string, number, number, number][] }
+    const d = JSON.parse(raw) as { v: number; token: TokenInfo; total: string; takenAt: number; kind?: string; holders: [string, string, number, number, number][] }
     if (d.v !== 1 || !d.token?.mint || !Array.isArray(d.holders)) return null
     return {
       token: d.token,
       total: BigInt(d.total),
       takenAt: d.takenAt,
+      kind: d.kind === 'collection' ? 'collection' : undefined,
       holders: d.holders.map(([owner, amount, accounts, isProgram, frozen]) => ({ owner, amount: BigInt(amount), accounts, isProgram: !!isProgram, frozen: !!frozen })),
     }
   } catch {
