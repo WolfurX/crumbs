@@ -2,14 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey } from '@solana/web3.js'
 import type { SnapshotResult } from './Snapshot'
+import { BatchList } from './BatchList'
 import { toast } from './Toast'
 import { addressUrl, isPubkey } from '../lib/chain'
+import { download } from '../lib/download'
 import { fmtInt, shortAddr } from '../lib/format'
 import { looksLikeName, resolveNames } from '../lib/names'
+import { runBatches } from '../lib/txs'
 import { fmtBytes, prepareImage, type PreparedImage } from '../mint/image'
 import { DEFAULT_ROYALTY_BPS, DESCRIPTION_LIMIT, MAX_PIECES, NAME_LIMIT, ROYALTY_MAX_BPS, SYMBOL_MAX, deriveSymbol, estimate, fetchRents, pieceName, type DropForm, type Estimate, type Rents } from '../mint/plan'
-import { forgetDrop, loadDrop, newDrop, refundDrop, runDrop, type DropState, type Progress } from '../mint/engine'
-import { IconChevronDown, IconCopy, IconExternalLink, IconShare2, IconUsers } from '../icons'
+import { forgetDrop, loadDrop, newDrop, refundDrop, runDrop, saveDrop, type DropState, type Progress } from '../mint/engine'
+import { renderDropCard } from '../mint/dropcard'
+import { planCreatorVerify, type VerifyPlan } from '../mint/verify'
+import { IconChevronDown, IconCopy, IconExternalLink, IconRefresh, IconShare2, IconShieldCheck, IconUsers } from '../icons'
 
 type Dest = 'me' | 'holders' | 'list'
 type Phase = 'form' | 'confirm' | 'running' | 'done'
@@ -57,6 +62,13 @@ export function Mint({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
   const [pending, setPending] = useState<DropState | null>(null)
   const [progress, setProgress] = useState<Progress | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
+  // what is on screen, readable from the wallet-change effect without re-running it on every render
+  const screen = useRef({ phase: 'form' as Phase, drop: null as DropState | null })
+  /** Keyed by collection, so a plan read for an earlier drop is never shown for the next one. */
+  const [verify, setVerify] = useState<{ collection: string; plan: VerifyPlan | null; error: string | null } | null>(null)
+  const [verifying, setVerifying] = useState(false)
+  const [, setVerifyTick] = useState(0)
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
     fetchRents(connection).then(setRents).catch(() => setRents(null))
@@ -74,13 +86,46 @@ export function Mint({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
     refreshBalance()
   }, [refreshBalance])
 
-  // an unfinished drop from an earlier visit
+  // an unfinished drop from an earlier visit resumes; a finished one keeps its done screen until Mint another.
+  // A drop in flight keeps its screen whatever the wallet does; another wallet's finished drop leaves it.
   useEffect(() => {
-    if (!owner) return
+    screen.current = { phase, drop }
+  }, [phase, drop])
+  useEffect(() => {
+    if (!owner || phase === 'running') return
     const saved = loadDrop(owner)
-    if (saved && saved.stage !== 'done') setPending(saved)
-    else if (saved) forgetDrop(owner)
-  }, [owner])
+    const onScreen = screen.current.drop
+    setPending(saved && saved.stage !== 'done' ? saved : null)
+    if (saved && saved.stage === 'done') {
+      if (onScreen?.collection.mint !== saved.collection.mint) {
+        setDrop(saved)
+        setPhase('done')
+      }
+    } else if (onScreen && onScreen.owner !== owner.toBase58()) {
+      setDrop(null)
+      setPhase('form')
+    }
+  }, [owner, phase])
+
+  // which of a finished drop's pieces still list the creator unverified; only the creator's own wallet can tell
+  useEffect(() => {
+    if (phase !== 'done' || !drop || !owner || drop.creatorVerified || drop.owner !== owner.toBase58()) return
+    let stale = false
+    const s = drop
+    planCreatorVerify(connection, owner, [s.collection.mint, ...s.pieces.map((p) => p.mint)])
+      .then((v) => {
+        if (stale) return
+        if (!v.unverified && !v.missing && v.verified) {
+          const done = { ...s, creatorVerified: true }
+          saveDrop(done)
+          setDrop(done)
+        } else setVerify({ collection: s.collection.mint, plan: v, error: null })
+      })
+      .catch((e) => !stale && setVerify({ collection: s.collection.mint, plan: null, error: (e as Error).message }))
+    return () => {
+      stale = true
+    }
+  }, [phase, drop, owner, connection])
 
   // resolve the pasted list: addresses as they are, .cook names through the name service
   useEffect(() => {
@@ -207,17 +252,80 @@ export function Mint({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
   }
 
   const copy = (text: string) => navigator.clipboard.writeText(text).then(() => toast('Copied'))
-  const share = (s: DropState) => {
+
+  /** The drop's own picture, whatever the form holds by now. */
+  const pictureOf = (s: DropState) => `data:${s.image.mime};base64,${s.image.b64}`
+
+  /** The drop as a 1200x630 card: shared where the browser can share files, saved as a PNG elsewhere. */
+  const share = async (s: DropState) => {
+    setSharing(true)
+    let blob: Blob
+    try {
+      blob = await renderDropCard({
+        name: s.form.name,
+        symbol: s.form.symbol,
+        pieces: s.pieces.length,
+        royaltyBps: s.form.royaltyBps,
+        collection: s.collection.mint,
+        image: pictureOf(s),
+        createdAt: s.createdAt,
+        site: location.host + (import.meta.env.BASE_URL === '/' ? '' : import.meta.env.BASE_URL.replace(/\/$/, '')),
+      })
+    } catch (e) {
+      toast('Could not render the card: ' + (e as Error).message)
+      setSharing(false)
+      return
+    }
+    const file = new File([blob], `${s.form.symbol.toLowerCase() || 'nft'}-drop.png`, { type: 'image/png' })
     const url = addressUrl(s.collection.mint)
-    const text = `${s.form.name}: ${s.pieces.length} pieces on Cookie Chain, minted with Crumbs.`
-    if (navigator.share) navigator.share({ title: s.form.name, text, url }).catch(() => undefined)
-    else copy(`${text} ${url}`)
+    const text = `${s.form.name}: ${s.pieces.length} piece${s.pieces.length === 1 ? '' : 's'} on Cookie Chain, minted with Crumbs.`
+    try {
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: s.form.name, text, url })
+        return
+      }
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return
+      // the share sheet refused (activation lapsed, no target): the card still exists, so save it instead
+    } finally {
+      setSharing(false)
+    }
+    download(blob, file.name)
+    const copied = await navigator.clipboard.writeText(`${text} ${url}`).then(() => true, () => false)
+    toast(copied ? 'Share card saved as PNG, text copied' : 'Share card saved as PNG')
+  }
+
+  /** Sign every piece that still lists the creator unverified; the wallet signs, nothing else changes. */
+  const verifyCreator = async (plan: VerifyPlan, retry: boolean) => {
+    if (!owner || !wallet.signTransaction || !drop) return
+    setVerifying(true)
+    try {
+      await runBatches({
+        connection,
+        signer: { publicKey: owner, signTransaction: wallet.signTransaction, signAllTransactions: wallet.signAllTransactions },
+        batches: plan.batches,
+        only: retry ? ['failed', 'expired'] : ['pending'],
+        onUpdate: () => setVerifyTick((t) => t + 1),
+      })
+      // the drop on screen may have changed while the wallet was signing (Mint another); only that drop is marked
+      if (plan.unverified > 0 && plan.batches.every((b) => b.status === 'confirmed') && screen.current.drop?.collection.mint === drop.collection.mint) {
+        const done = { ...drop, creatorVerified: true }
+        saveDrop(done)
+        setDrop(done)
+        toast('You are now the verified creator of every piece')
+      }
+    } finally {
+      setVerifying(false)
+    }
   }
 
   // ---------- running and done ----------
   if (phase === 'running' || phase === 'done') {
     const s = drop!
     const p = progress
+    const v = verify?.collection === s.collection.mint ? verify : null
+    const vp = v?.plan ?? null
+    const vFailed = !!vp?.batches.some((b) => b.status === 'failed' || b.status === 'expired')
     const total = s.pieces.length
     const piecesDone = p?.piecesDone ?? 0
     return (
@@ -228,7 +336,7 @@ export function Mint({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
               <h2>Done. {fmtInt(total)} piece{total === 1 ? ' is' : 's are'} in {dest === 'me' && s.recipients.every((r) => r === s.owner) ? 'your wallet' : 'their wallets'}.</h2>
               <p className="lead">The collection is live on Cookie Chain. What was left of the funding went back to your wallet.</p>
               <div className="row" style={{ gap: '1rem' }}>
-                <img className="thumb" src={image?.previewUrl ?? `data:${s.image.mime};base64,${s.image.b64}`} alt="" />
+                <img className="thumb" src={pictureOf(s)} alt="" />
                 <div>
                   <div style={{ fontWeight: 600 }}>{s.form.name}</div>
                   <div className="muted small mono">Collection {shortAddr(s.collection.mint, 4, 4)} <button className="chip" onClick={() => copy(s.collection.mint)}><IconCopy /> copy</button></div>
@@ -237,15 +345,38 @@ export function Mint({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
               <ul className="links">
                 <li><a href={addressUrl(s.collection.mint)} target="_blank" rel="noreferrer">See it on Cookiescan <IconExternalLink /></a></li>
                 <li><a href={`${BAZAAR}/nft/${s.pieces[0].mint}`} target="_blank" rel="noreferrer">See it on Baked Bazaar <IconExternalLink /></a></li>
-                <li><button className="linkbtn" onClick={() => share(s)}>Share <IconShare2 /></button></li>
+                <li><button className="linkbtn" disabled={sharing} onClick={() => share(s)}>{sharing ? 'Rendering the card…' : 'Share a card'} <IconShare2 /></button></li>
               </ul>
+              <div className="verify">
+                {s.creatorVerified ? (
+                  <div className="ink2 small row" style={{ gap: '0.4rem' }}><IconShieldCheck style={{ color: 'var(--accent)' }} /> You are the verified creator of every piece.</div>
+                ) : vp && !vp.unverified ? (
+                  <div className="muted small">{fmtInt(vp.missing)} of the pieces {vp.missing === 1 ? 'does' : 'do'} not list this wallet as creator, so there is nothing to sign here.</div>
+                ) : vp ? (
+                  <>
+                    <div style={{ fontWeight: 600 }}>Verify yourself as the creator</div>
+                    <div className="muted small" style={{ marginTop: '0.3rem' }}>
+                      {fmtInt(vp.unverified)} of {fmtInt(vp.unverified + vp.verified + vp.missing)} still list your wallet as an unverified creator, the collection included: {fmtInt(vp.unverified)} signature{vp.unverified === 1 ? '' : 's'} in {fmtInt(vp.batches.length)} transaction{vp.batches.length === 1 ? '' : 's'}, approved in your wallet. Marketplaces then show a verified creator.
+                    </div>
+                    <div className="row" style={{ marginTop: '0.7rem' }}>
+                      {!vFailed && <button className="btn primary" disabled={verifying || !wallet.signTransaction} onClick={() => verifyCreator(vp, false)}><IconShieldCheck /> {verifying ? 'Working…' : 'Sign and verify'}</button>}
+                      {vFailed && !verifying && <button className="btn primary" onClick={() => verifyCreator(vp, true)}><IconRefresh /> Retry failed</button>}
+                    </div>
+                    {vp.batches.some((b) => b.status !== 'pending') && <div style={{ marginTop: '0.7rem' }}><BatchList batches={vp.batches} unit="signatures" /></div>}
+                  </>
+                ) : v?.error ? (
+                  <div className="limit">Could not read the creator flags: {v.error}</div>
+                ) : (
+                  <div className="muted small">Checking the creator flag on each piece…</div>
+                )}
+              </div>
               <div className="row" style={{ marginTop: '1rem' }}>
                 <button className="btn" onClick={() => onSnapshot(s.collection.mint)}><IconUsers /> Snapshot the holders</button>
-                <button className="btn" onClick={reset}>Mint another</button>
+                <button className="btn" disabled={verifying} onClick={reset}>Mint another</button>
               </div>
             </div>
             <div className="side">
-              <NftCard src={image?.previewUrl ?? `data:${s.image.mime};base64,${s.image.b64}`} name={pieceName(s.form.name, total)} line={`${s.form.name} · ${s.form.symbol} · ${total} of ${total}`} />
+              <NftCard src={pictureOf(s)} name={pieceName(s.form.name, total)} line={`${s.form.name} · ${s.form.symbol} · ${total} of ${total}`} />
               <div className="muted small" style={{ textAlign: 'center', marginTop: '0.5rem' }}>The last piece, as its owner sees it.</div>
             </div>
           </div>
@@ -285,7 +416,7 @@ export function Mint({ snapshot, onNeedSnapshot, onSnapshot }: Props) {
               {!runError && <div className="muted small" style={{ marginTop: '1rem' }}>Closing the tab is safe. Finished pieces stay minted and you can resume the rest.</div>}
             </div>
             <div className="side">
-              <NftCard src={image?.previewUrl ?? `data:${s.image.mime};base64,${s.image.b64}`} name={pieceName(s.form.name, Math.min(total, piecesDone + 1))} line={`${s.form.name} · ${s.form.symbol} · ${Math.min(total, piecesDone + 1)} of ${total}`} />
+              <NftCard src={pictureOf(s)} name={pieceName(s.form.name, Math.min(total, piecesDone + 1))} line={`${s.form.name} · ${s.form.symbol} · ${Math.min(total, piecesDone + 1)} of ${total}`} />
             </div>
           </div>
         )}

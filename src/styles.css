@@ -333,6 +333,9 @@ tr.me td { background: var(--accent-soft); }
 .links li:last-child { border-bottom: 0; }
 .links a, .links .linkbtn { display: flex; justify-content: space-between; align-items: center; padding: 0.55rem 0; color: var(--ink); text-decoration: none; width: 100%; }
 .links a:hover, .links .linkbtn:hover { color: var(--accent); }
+.links .linkbtn:disabled { color: var(--muted); cursor: default; }
+/* creator verification on the done screen */
+.verify { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); max-width: 480px; }
 
 /* changelog page: date column, hairline rows */
 .page { padding-top: 1.5rem; min-height: 60vh; }

@@ -54,6 +54,8 @@ export interface AirdropRecord {
   recipients: number
   /** Confirmed transaction signatures, in batch order. */
   signatures: string[]
+  /** An NFT drop: `total` counts pieces, one per wallet. */
+  pieces?: boolean
 }
 
 const AIRDROPS_KEY = 'crumbs.airdrops'

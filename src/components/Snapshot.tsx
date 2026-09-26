@@ -11,6 +11,7 @@ import { COOK_MINT, TOKEN_2022_PROGRAM, TOKEN_PROGRAM, addressUrl, isPubkey } fr
 import { fmtAmount, fmtInt, fmtPct, shortAddr } from '../lib/format'
 import { loadRecent, pushRecent, timeAgo, type RecentSnapshot } from '../lib/recent'
 import { renderShareCard } from '../lib/sharecard'
+import { download } from '../lib/download'
 import { HolderChart } from './HolderChart'
 import { ArtSnapshot } from './Art'
 import { toast } from './Toast'
@@ -401,10 +402,3 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
   )
 }
 
-function download(blob: Blob, name: string) {
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = name
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
-}

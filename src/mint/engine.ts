@@ -36,6 +36,8 @@ export interface DropState {
   /** The collection's update authority went to the creator (after every piece was verified). */
   handedOver?: boolean
   refunded?: boolean
+  /** The creator signed every piece and the collection, so marketplaces show them as verified. */
+  creatorVerified?: boolean
 }
 
 const key = (owner: PublicKey | string) => `crumbs.drop.${typeof owner === 'string' ? owner : owner.toBase58()}`

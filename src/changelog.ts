@@ -1,6 +1,11 @@
 /** What changed, newest first. One entry per release that reached production. */
 export const CHANGELOG: { date: string; title: string; text: string }[] = [
   {
+    date: '2026-09-26',
+    title: 'NFT airdrops and verified creators',
+    text: 'Airdrop sends NFTs too: pick a collection you hold and each wallet on the list or in the snapshot gets one piece, in order, until your pieces run out, with its token account created for it. On the Mint NFT done screen you can now sign every piece as its creator, so marketplaces show you verified, and share the drop as a card.',
+  },
+  {
     date: '2026-09-23',
     title: 'NFT holder snapshots and a bakery',
     text: 'Snapshot takes an NFT collection too: every wallet holding its pieces with the count each holds, read from the chain, ready for a holder-only airdrop. A finished Mint NFT drop links straight to it. On the Clicker, every baker you own stands beside the cookie and sends crumbs its way; the ones still to buy wait as outlines.',

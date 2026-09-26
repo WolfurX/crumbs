@@ -1,5 +1,5 @@
 // Hand-encoded Metaplex Token Metadata instructions, same approach as program/scripts/init-mainnet.mjs.
-// Only what a quick drop needs: metadata v3, master edition v3, collection verify.
+// Only what a quick drop needs: metadata v3, master edition v3, collection verify, creator sign.
 import { Buffer } from 'buffer'
 import { PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY, SYSVAR_RENT_PUBKEY, SystemProgram, TransactionInstruction } from '@solana/web3.js'
 import { TOKEN_PROGRAM } from '../lib/chain'
@@ -115,6 +115,15 @@ export function verifyCollectionLegacyIx(itemMint: PublicKey, collectionMint: Pu
       meta(metadataPda(collectionMint)),
       meta(editionPda(collectionMint)),
     ],
+  })
+}
+
+/** SignMetadata (discriminator 7): a listed creator signs one piece, which flips their entry to verified. */
+export function signMetadataIx(mint: PublicKey, creator: PublicKey): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: METADATA_PROGRAM,
+    data: u8(7),
+    keys: [meta(metadataPda(mint), true), meta(creator, false, true)],
   })
 }
 

@@ -7,15 +7,15 @@ import { METADATA_PROGRAM, metadataPda } from '../mint/tm'
 export interface NftMeta {
   name: string
   symbol: string
+  creators: { address: string; verified: boolean; share: number }[]
+  /** Token Metadata's standard: 0 NonFungible, 1 FungibleAsset, 2 Fungible, 3 NonFungibleEdition, 4 ProgrammableNonFungible; null on old accounts. */
+  tokenStandard: number | null
   /** The collection this NFT is a piece of, when it points at one. */
   collection: { key: string; verified: boolean } | null
 }
 
-/** Name, symbol and collection pointer from a mint's Token Metadata account; null when it has none. */
-export async function readNftMeta(connection: Connection, mint: PublicKey): Promise<NftMeta | null> {
-  const info = await connection.getAccountInfo(metadataPda(mint))
-  if (!info || !info.owner.equals(METADATA_PROGRAM)) return null
-  const d = info.data
+/** A Token Metadata account, read field by field. */
+function decodeNftMeta(d: Uint8Array): NftMeta {
   const view = new DataView(d.buffer, d.byteOffset, d.byteLength)
   let o = 65 // key, update authority, mint
   const str = () => {
@@ -28,12 +28,35 @@ export async function readNftMeta(connection: Connection, mint: PublicKey): Prom
   const symbol = str()
   str() // uri
   o += 2 // royalty
-  if (d[o++] === 1) o += 4 + 34 * view.getUint32(o, true) // creators
+  const creators: NftMeta['creators'] = []
+  if (d[o++] === 1) {
+    const n = view.getUint32(o, true)
+    o += 4
+    for (let i = 0; i < n; i++, o += 34) creators.push({ address: new PublicKey(d.subarray(o, o + 32)).toBase58(), verified: d[o + 32] === 1, share: d[o + 33] })
+  }
   o += 2 // primary sale, mutable
   if (d[o++] === 1) o += 1 // edition nonce
-  if (d[o++] === 1) o += 1 // token standard
+  const tokenStandard = d[o++] === 1 ? d[o++] : null
   const collection = d[o] === 1 ? { verified: d[o + 1] === 1, key: new PublicKey(d.subarray(o + 2, o + 34)).toBase58() } : null
-  return { name, symbol, collection }
+  return { name, symbol, creators, tokenStandard, collection }
+}
+
+/** Metadata for many mints in one go (hundreds per RPC call); null where a mint has none. */
+export async function readNftMetas(connection: Connection, mints: PublicKey[]): Promise<(NftMeta | null)[]> {
+  const out: (NftMeta | null)[] = new Array(mints.length).fill(null)
+  for (let i = 0; i < mints.length; i += 100) {
+    const slice = mints.slice(i, i + 100)
+    const infos = await connection.getMultipleAccountsInfo(slice.map(metadataPda))
+    infos.forEach((info, j) => {
+      if (info && info.owner.equals(METADATA_PROGRAM)) out[i + j] = decodeNftMeta(info.data)
+    })
+  }
+  return out
+}
+
+/** Name, symbol and collection pointer from a mint's Token Metadata account; null when it has none. */
+export async function readNftMeta(connection: Connection, mint: PublicKey): Promise<NftMeta | null> {
+  return (await readNftMetas(connection, [mint]))[0]
 }
 
 // Token Metadata pads name, symbol and uri to 32, 10 and 200 bytes, so a piece's collection pointer

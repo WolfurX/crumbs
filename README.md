@@ -12,7 +12,7 @@ Live: https://crumbs-cookie.vercel.app/ (mirror: https://wolfurx.github.io/crumb
 
 ![Share card](docs/share-card.png)
 
-**Airdrop.** Three steps: who receives it, what they get, review and send. Send COOK or any SPL / Token-2022 token you hold to a snapshot or to a pasted list. Same amount for everyone, pro-rata to holdings, or an amount per line. Crumbs packs transfers into as few transactions as fit under the 1232-byte limit, creates missing recipient token accounts idempotently, asks the wallet to sign everything in one prompt, then sends and confirms transaction by transaction with live status, Cookiescan links, expiry-aware retries and a results CSV. Costs are shown before you sign: total sent, network fees, and the rent for new accounts (which the recipients can reclaim by closing them).
+**Airdrop.** Three steps: who receives it, what they get, review and send. Send COOK or any SPL / Token-2022 token you hold to a snapshot or to a pasted list. Same amount for everyone, pro-rata to holdings, or an amount per line. Or send NFTs: the Send menu lists every verified collection in your wallet with the pieces you hold, and each recipient gets one piece, in piece order and list order, until the pieces run out, with a token account created for it; snapshot a collection first and the pieces go to its holders. Crumbs packs transfers into as few transactions as fit under the 1232-byte limit, creates missing recipient token accounts idempotently, asks the wallet to sign everything in one prompt, then sends and confirms transaction by transaction with live status, Cookiescan links, expiry-aware retries and a results CSV. Costs are shown before you sign: total sent, network fees, and the rent for new accounts (which the recipients can reclaim by closing them).
 
 ![Airdrop review and confirmation](docs/airdrop.png)
 
@@ -22,7 +22,7 @@ Live: https://crumbs-cookie.vercel.app/ (mirror: https://wolfurx.github.io/crumb
 
 **.cook names.** Type a `.cook` name wherever Crumbs asks for a wallet: airdrop recipients, the swap counterparty. Wallets that set a primary name show it on the leaderboard, in holder tables and in the wallet button. Names are read straight from the name service program; there is nothing to buy or configure.
 
-**Mint NFT.** Release a quick drop: one picture, as many numbered copies as you like (up to 1,000), sent to your wallet, to every holder of a token from a snapshot, or to a pasted list of addresses and `.cook` names. The picture is resized to 1024px WebP in your browser and stored on Cookie Chain itself, in a byte-blob account, next to one metadata JSON per piece; a keyless read route on the Crumbs domain serves those bytes over HTTPS so wallets, Cookiescan and Baked Bazaar can show them. Your wallet approves once, to fund a throwaway session key with the exact rent and fees; the key stores the files, mints the collection NFT, mints and verifies every piece into it, hands every update authority to you, and returns what is left. Every piece is a standard Metaplex NFT: master edition, verified collection, your royalty. Costs are shown before you approve, and a closed tab resumes where it stopped without minting twice.
+**Mint NFT.** Release a quick drop: one picture, as many numbered copies as you like (up to 1,000), sent to your wallet, to every holder of a token from a snapshot, or to a pasted list of addresses and `.cook` names. The picture is resized to 1024px WebP in your browser and stored on Cookie Chain itself, in a byte-blob account, next to one metadata JSON per piece; a keyless read route on the Crumbs domain serves those bytes over HTTPS so wallets, Cookiescan and Baked Bazaar can show them. Your wallet approves once, to fund a throwaway session key with the exact rent and fees; the key stores the files, mints the collection NFT, mints and verifies every piece into it, hands every update authority to you, and returns what is left. Every piece is a standard Metaplex NFT: master edition, verified collection, your royalty. Costs are shown before you approve, and a closed tab resumes where it stopped without minting twice. The done screen stays until you start another drop: from it you can sign every piece as its creator (the session key minted them, so they list you unverified until your wallet signs; one transaction per 24 pieces), share the drop as a 1200x630 card, and snapshot its holders.
 
 ![Mint NFT: a quick drop ready to mint](docs/mint.png)
 
@@ -66,7 +66,7 @@ npm run build        # dist/ with service worker and manifest
 npm run preview
 ```
 
-`scripts/engine-test.ts` runs the airdrop and cleanup code against the live chain with a local keypair (build it with `npx vite build --config vite.engine.config.ts`). `scripts/e2e-snapshot.mjs` drives the built app in a headless Chromium over the DevTools protocol.
+`scripts/engine-test.ts` runs the airdrop and cleanup code against the live chain with a local keypair (build it with `npx vite build --config vite.engine.config.ts`); `scripts/nft-airdrop-test.ts` (run with `npx tsx`) mints a small collection, verifies the creator and airdrops its pieces, checking every result by an independent RPC route. `scripts/e2e-*.mjs` drive the built app in a headless Chromium over the DevTools protocol.
 
 Deployed from `main` to Vercel (production) and, as a mirror, to GitHub Pages by Actions. The base path follows the host: `/` on Vercel, `/crumbs/` on Pages.
 
@@ -82,6 +82,7 @@ The site shows the same list. Suggestions go in the issues or as replies to the 
 
 The site has the full list at https://crumbs-cookie.vercel.app/#changelog (footer link). In short:
 
+- **2026-09-26** NFT airdrops: pick a collection you hold and each recipient gets one piece until the pieces run out. Creator verification and a share card on the Mint NFT done screen.
 - **2026-09-23** NFT holder snapshots: paste a collection, get every wallet holding its pieces, read from the chain; a finished Mint NFT drop links to it. The bakers you own stand around the clicker cookie.
 - **2026-09-16** Quality of life: tabs keep their state and live in the URL, the last snapshot survives a reload, airdrop exclude list and history, copy addresses and retake on the snapshot, the maker's swap offer persists with its status.
 - **2026-09-13** Mint NFT: quick drops with the picture stored on Cookie Chain, one wallet approval.

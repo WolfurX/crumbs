@@ -7,11 +7,16 @@ import {
 } from '@solana/spl-token'
 import { COOK_MINT, TOKEN_2022_PROGRAM, TOKEN_ACCOUNT_RENT, TOKEN_PROGRAM } from './chain'
 import { shortAddr } from './format'
+import type { NftGroup, Piece } from './nfts'
 import { packBatches, type Batch } from './txs'
 
 export type Asset =
   | { kind: 'native'; symbol: 'COOK'; decimals: 9 }
   | { kind: 'token'; mint: PublicKey; decimals: number; programId: PublicKey; symbol: string }
+  /** NFTs from the wallet: one piece per recipient, in piece order. */
+  | { kind: 'nft'; symbol: string; name: string; decimals: 0; pieces: Piece[] }
+
+export const nftAsset = (g: NftGroup): Asset => ({ kind: 'nft', symbol: g.symbol, name: g.name, decimals: 0, pieces: g.pieces })
 
 export interface Recipient {
   owner: string
@@ -34,6 +39,10 @@ export interface AirdropPlan {
   belowRent: number
   /** COOK only: the smallest amount an empty wallet can receive. */
   rentMinimum: bigint
+  /** NFTs only: the piece each recipient gets, in recipient order. */
+  pieces?: Piece[]
+  /** NFTs only: valid recipients left out because the wallet holds fewer pieces than that. */
+  withoutPiece: number
 }
 
 /** Resolve a mint into an Asset: native COOK, or a token with its program and decimals read on chain. */
@@ -72,6 +81,8 @@ export async function planAirdrop(connection: Connection, sender: PublicKey, ass
   let ataCreates = 0
   let belowRent = 0
   let rentMinimum = 0n
+  let withoutPiece = 0
+  let pieces: Piece[] | undefined
   if (asset.kind === 'native') {
     // A system account must end up rent exempt (about 0.00089 COOK), or the transfer fails. Wallets
     // that do not exist yet, or sit below that line, need at least the difference.
@@ -88,6 +99,27 @@ export async function planAirdrop(connection: Connection, sender: PublicKey, ass
     })
     recipients.length = 0
     recipients.push(...kept)
+  } else if (asset.kind === 'nft') {
+    // piece i goes to recipient i; recipients past the last piece are left out, not failed
+    if (recipients.length > asset.pieces.length) {
+      withoutPiece = recipients.length - asset.pieces.length
+      recipients.length = asset.pieces.length
+    }
+    pieces = asset.pieces.slice(0, recipients.length)
+    const atas = recipients.map((r, i) => getAssociatedTokenAddressSync(new PublicKey(pieces![i].mint), new PublicKey(r.owner), true, pieces![i].programId))
+    const exists = await accountsExist(connection, atas)
+    recipients.forEach((r, i) => {
+      const piece = pieces![i]
+      const mint = new PublicKey(piece.mint)
+      r.amount = 1n
+      const ixs: TransactionInstruction[] = []
+      if (!exists[i]) {
+        ataCreates += 1
+        ixs.push(createAssociatedTokenAccountIdempotentInstruction(sender, atas[i], new PublicKey(r.owner), mint, piece.programId))
+      }
+      ixs.push(createTransferCheckedInstruction(new PublicKey(piece.account), mint, atas[i], sender, 1n, 0, [], piece.programId))
+      items.push(ixs)
+    })
   } else {
     const source = getAssociatedTokenAddressSync(asset.mint, sender, false, asset.programId)
     const atas = recipients.map((r) => getAssociatedTokenAddressSync(asset.mint, new PublicKey(r.owner), true, asset.programId))
@@ -115,6 +147,8 @@ export async function planAirdrop(connection: Connection, sender: PublicKey, ass
     invalid,
     belowRent,
     rentMinimum,
+    pieces,
+    withoutPiece,
   }
 }
 
