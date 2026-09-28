@@ -1,6 +1,11 @@
 /** What changed, newest first. One entry per release that reached production. */
 export const CHANGELOG: { date: string; title: string; text: string }[] = [
   {
+    date: '2026-09-28',
+    title: 'Snapshot changes and a lighter first load',
+    text: 'Snapshot keeps the last eight snapshots of every token on your device and compares any two: who joined, who left, whose balance grew or shrank, with the same filters, a CSV of the changes and a share card. Export a snapshot as a file to compare against in another browser or months later. The app now loads the Snapshot tab first and fetches the other tabs while you read.',
+  },
+  {
     date: '2026-09-26',
     title: 'NFT airdrops and verified creators',
     text: 'Airdrop sends NFTs too: pick a collection you hold and each wallet on the list or in the snapshot gets one piece, in order, until your pieces run out, with its token account created for it. On the Mint NFT done screen you can now sign every piece as its creator, so marketplaces show you verified, and share the drop as a card.',

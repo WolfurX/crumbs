@@ -353,3 +353,14 @@ tr.me td { background: var(--accent-soft); }
 .history li { display: grid; grid-template-columns: 5.5rem 1fr auto; gap: 0.6rem; padding: 0.5rem 0; border-bottom: 1px solid var(--line); align-items: baseline; font-size: 0.9rem; }
 .history li:last-child { border-bottom: 0; }
 @media (max-width: 560px) { .history li { grid-template-columns: 5.5rem 1fr; } .history li > :last-child { grid-column: 2; } }
+
+/* snapshot changes */
+.compare { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-top: 0.9rem; color: var(--muted); font-size: 0.85rem; }
+.compare .chip { font-variant-numeric: tabular-nums; }
+.compare input[type="file"] { display: none; }
+.delta { font-variant-numeric: tabular-nums; }
+.delta.up { color: var(--accent); }
+.delta.down { color: var(--bad); }
+.since { color: var(--ink-2); font-size: 0.9rem; margin-top: 0.6rem; }
+.seg.groups button { white-space: nowrap; }
+@media (max-width: 560px) { .seg.groups { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%; } .seg.groups button { padding: 0.45rem 0.2rem; font-size: 0.85rem; } .seg.groups button .num { display: block; } }

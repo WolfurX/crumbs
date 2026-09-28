@@ -46,5 +46,19 @@ export default defineConfig({
       },
     }),
   ],
-  build: { target: 'es2022' },
+  build: {
+    target: 'es2022',
+    rolldownOptions: {
+      output: {
+        // one vendor chunk for everything the first paint needs from node_modules (changes rarely, so a
+        // deploy re-downloads only our code); three.js stays its own lazy chunk behind the 3D scenes
+        codeSplitting: {
+          groups: [
+            { name: 'three', test: /node_modules[\\/]three[\\/]/ },
+            { name: 'vendor', test: /node_modules/ },
+          ],
+        },
+      },
+    },
+  },
 })

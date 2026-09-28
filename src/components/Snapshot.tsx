@@ -10,7 +10,9 @@ import { Addr } from './Addr'
 import { COOK_MINT, TOKEN_2022_PROGRAM, TOKEN_PROGRAM, addressUrl, isPubkey } from '../lib/chain'
 import { fmtAmount, fmtInt, fmtPct, shortAddr } from '../lib/format'
 import { loadRecent, pushRecent, timeAgo, type RecentSnapshot } from '../lib/recent'
-import { renderShareCard } from '../lib/sharecard'
+import { keepSnapshot, listSaved, loadSaved, parseSnapshotJson, snapshotJson, type SavedSnapshot, type StoredSnapshot } from '../lib/history'
+import { diffHolders, fmtDelta, type Change } from '../lib/diff'
+import { renderDiffCard, renderShareCard } from '../lib/sharecard'
 import { download } from '../lib/download'
 import { HolderChart } from './HolderChart'
 import { ArtSnapshot } from './Art'
@@ -36,6 +38,8 @@ interface Props {
 }
 
 type SortKey = 'balance' | 'owner' | 'accounts'
+type Group = 'all' | Change
+const GROUPS: [Group, string][] = [['all', 'All'], ['joined', 'Joined'], ['left', 'Left'], ['grew', 'Grew'], ['shrank', 'Shrank']]
 const PAGE = 25
 const usd = (n: number) => (n >= 1 ? `$${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : n >= 0.01 ? `$${n.toFixed(4)}` : `$${n.toPrecision(3)}`)
 
@@ -56,6 +60,13 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
   const [sharing, setSharing] = useState(false)
   const abort = useRef<AbortController | null>(null)
   const [, setAgeTick] = useState(0)
+  /** Earlier snapshots of the same token kept in this browser, newest first. The index is a few hundred bytes, so it is read on render. */
+  const saved: SavedSnapshot[] = result ? listSaved(result.token.mint).filter((x) => x.id !== String(result.takenAt)) : []
+  /** The earlier snapshot the current one is compared with; set, the card shows the changes instead of the holders. Tied to the result it was picked for, so a new snapshot starts on the holders view. */
+  const [cmp, setCmp] = useState<{ at: number; base: StoredSnapshot; group: Group } | null>(null)
+  const base = cmp && result && cmp.at === result.takenAt ? cmp.base : null
+  const group: Group = base && cmp ? cmp.group : 'all'
+  const fileInput = useRef<HTMLInputElement | null>(null)
 
   // the age label ("taken 12m ago") moves once a minute while a result is on screen
   useEffect(() => {
@@ -161,10 +172,109 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
       rank,
     }
   }, [result, hideProgram, minUi, sort])
-  const names = usePrimaryNames(connection, view?.table.slice(0, 500).map((h) => h.owner) ?? [])
+  // the changes view: both snapshots pass the same filters, so a wallet joins when it enters the filtered set
+  const diff = useMemo(() => {
+    if (!result || !view || !base) return null
+    const min = minUi.trim() ? BigInt(Math.floor(Number(minUi) * 10 ** result.token.decimals)) : 0n
+    return diffHolders(base.holders.filter((h) => (!hideProgram || !h.isProgram) && h.amount >= min), view.rows)
+  }, [result, view, base, hideProgram, minUi])
+  const diffRows = useMemo(() => (!diff ? [] : group === 'all' ? diff.rows : diff.rows.filter((r) => r.change === group)), [diff, group])
+  const names = usePrimaryNames(connection, (diff ? diffRows.slice(0, 500).map((r) => r.owner) : view?.table.slice(0, 500).map((h) => h.owner)) ?? [])
   const q = search.trim().toLowerCase()
   const nft = result?.kind === 'collection'
   const table = !view ? [] : q ? view.table.filter((h) => h.owner.toLowerCase().includes(q) || names.get(h.owner)?.includes(q)) : view.table
+  const diffTable = q ? diffRows.filter((r) => r.owner.toLowerCase().includes(q) || names.get(r.owner)?.includes(q)) : diffRows
+  const amount = (n: bigint) => (nft ? fmtInt(Number(n)) : fmtAmount(n, result?.token.decimals ?? 0))
+  const site = () => location.host + (import.meta.env.BASE_URL === '/' ? '' : import.meta.env.BASE_URL.replace(/\/$/, ''))
+
+  function compareWith(id: string | null) {
+    setError(null)
+    if (!id || !result) {
+      setCmp(null)
+      return
+    }
+    const b = loadSaved(id)
+    if (!b) {
+      setError('That snapshot is no longer in this browser.')
+      return
+    }
+    setCmp({ at: result.takenAt, base: b, group: 'all' })
+    setSearch('')
+    setShown(PAGE)
+  }
+  const setGroup = (g: Group) => setCmp((c) => c && { ...c, group: g })
+
+  /** A snapshot file exported here (or in another browser) becomes a comparison point for the same token. */
+  async function importFile(file: File | undefined) {
+    if (!file || !result) return
+    setError(null)
+    try {
+      const s = parseSnapshotJson(await file.text())
+      if (s.token.mint !== result.token.mint) throw new Error(`That file is a ${s.token.symbol} snapshot. Take a ${s.token.symbol} snapshot first, then compare.`)
+      if (s.takenAt === result.takenAt) throw new Error('That file is this very snapshot.')
+      keepSnapshot(s)
+      compareWith(String(s.takenAt))
+      toast(`Snapshot from ${new Date(s.takenAt).toLocaleDateString()} imported`)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      if (fileInput.current) fileInput.current.value = ''
+    }
+  }
+
+  function exportJson() {
+    if (!result) return
+    download(new Blob([snapshotJson(result)], { type: 'application/json' }), `${result.token.symbol || 'token'}-snapshot-${new Date(result.takenAt).toISOString().slice(0, 10)}.json`)
+    toast('Snapshot saved as a file. Import it here later to see what changed.')
+  }
+
+  function exportDiffCsv() {
+    if (!result || !base || !diff) return
+    const d = result.token.decimals
+    const raw = (n: bigint) => (nft ? String(n) : fmtAmount(n, d).replace(/,/g, ''))
+    const lines = [`change,owner,before,after,delta,program_account`, ...diffRows.map((r) => `${r.change},${r.owner},${raw(r.before)},${raw(r.after)},${r.delta < 0n ? '-' : ''}${raw(r.delta < 0n ? -r.delta : r.delta)},${r.isProgram}`)]
+    const day = (t: number) => new Date(t).toISOString().slice(0, 10)
+    download(new Blob([lines.join('\n')], { type: 'text/csv' }), `${result.token.symbol || 'token'}-changes-${day(base.takenAt)}-to-${day(result.takenAt)}.csv`)
+    toast(`CSV with ${fmtInt(diffRows.length)} changes saved`)
+  }
+
+  function copyDiffAddresses() {
+    navigator.clipboard.writeText(diffRows.map((r) => r.owner).join('\n')).then(() => toast(`${fmtInt(diffRows.length)} addresses copied`))
+  }
+
+  async function shareDiff() {
+    if (!result || !base || !diff) return
+    setSharing(true)
+    try {
+      const blob = await renderDiffCard({
+        symbol: result.token.symbol,
+        name: result.token.name,
+        mint: result.token.mint,
+        decimals: result.token.decimals,
+        collection: nft,
+        from: base.takenAt,
+        to: result.takenAt,
+        counts: diff.counts,
+        holdersBefore: diff.holdersBefore,
+        holdersAfter: diff.holdersAfter,
+        heldBefore: diff.heldBefore,
+        heldAfter: diff.heldAfter,
+        rows: diff.rows,
+        site: site(),
+      })
+      const file = new File([blob], `${result.token.symbol || 'token'}-changes.png`, { type: 'image/png' })
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: `${result.token.symbol} holder changes on Cookie Chain` })
+      } else {
+        download(blob, file.name)
+        toast('Share card saved as PNG')
+      }
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') setError('Could not render the card: ' + (e as Error).message)
+    } finally {
+      setSharing(false)
+    }
+  }
 
   function exportCsv() {
     if (!result || !view) return
@@ -189,7 +299,7 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
         poolsPct: view.poolsPct,
         takenAt: result.takenAt,
         collection: nft,
-        site: location.host + (import.meta.env.BASE_URL === '/' ? '' : import.meta.env.BASE_URL.replace(/\/$/, '')),
+        site: site(),
       })
       const file = new File([blob], `${result.token.symbol || 'token'}-holders.png`, { type: 'image/png' })
       if (navigator.canShare?.({ files: [file] })) {
@@ -215,6 +325,16 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
     if (!view) return
     navigator.clipboard.writeText(view.rows.map((h) => h.owner).join('\n')).then(() => toast(`${fmtInt(view.rows.length)} addresses copied`))
   }
+
+  const filters = result && (
+    <div className="row" style={{ margin: '0.9rem 0' }}>
+      <label className="check"><input type="checkbox" checked={hideProgram} onChange={(e) => setHideProgram(e.target.checked)} /> Hide program accounts (pools, vaults, escrows)</label>
+      <label className="field" style={{ gridTemplateColumns: 'auto 120px', display: 'grid', alignItems: 'center', gap: '0.5rem' }}>
+        <span>{nft ? 'Min pieces' : 'Min balance'}</span>
+        <input className="input num" inputMode="decimal" value={minUi} onChange={(e) => setMinUi(e.target.value)} placeholder="0" />
+      </label>
+    </div>
+  )
 
   const th = (key: SortKey, label: string, right = false) => (
     <th className={right ? 'right' : ''}>
@@ -315,13 +435,87 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
               </div>
             </div>
             <div className="row">
-              <button className="btn" onClick={exportCsv}><IconDownload /> CSV</button>
-              <button className="btn" onClick={copyAddresses} title="One address per line, after the filters"><IconCopy /> Copy addresses</button>
-              <button className="btn" onClick={share} disabled={sharing}><IconExternalLink /> {sharing ? 'Rendering…' : 'Share card'}</button>
+              <button className="btn" onClick={diff ? exportDiffCsv : exportCsv}><IconDownload /> CSV</button>
+              <button className="btn" onClick={diff ? copyDiffAddresses : copyAddresses} title={diff ? 'The wallets in the changes shown, one per line' : 'One address per line, after the filters'}><IconCopy /> Copy addresses</button>
+              <button className="btn" onClick={diff ? shareDiff : share} disabled={sharing}><IconExternalLink /> {sharing ? 'Rendering…' : 'Share card'}</button>
               <button className="btn primary" onClick={onAirdrop}><IconParachute /> Airdrop to {fmtInt(view.rows.length)}</button>
             </div>
           </div>
 
+          <div className="compare">
+            <span>Changes since</span>
+            {saved.map((x) => (
+              <button key={x.id} className="chip" aria-pressed={base?.takenAt === x.takenAt} onClick={() => compareWith(base?.takenAt === x.takenAt ? null : x.id)} title={`Compare with the snapshot from ${new Date(x.takenAt).toLocaleString()}`}>
+                {timeAgo(x.takenAt)} <span className="muted">{fmtInt(x.holders)} holders</span>
+              </button>
+            ))}
+            {!saved.length && <span>nothing yet. Take this snapshot again later, or import one you exported.</span>}
+            <label className="chip" title="A snapshot file exported from Crumbs">
+              Import file
+              <input ref={fileInput} type="file" accept=".json,application/json" onChange={(e) => importFile(e.target.files?.[0])} />
+            </label>
+            <button className="btn quiet sm" onClick={exportJson} title="Save this snapshot as a file to compare against later"><IconDownload /> Export</button>
+          </div>
+
+          {diff && base ? (
+            <>
+              <div className="tiles" style={{ marginTop: '1rem' }}>
+                <div className="tile"><div className="label">Joined</div><div className="value num">{fmtInt(diff.counts.joined)}</div></div>
+                <div className="tile"><div className="label">Left</div><div className="value num">{fmtInt(diff.counts.left)}</div></div>
+                <div className="tile"><div className="label">Grew</div><div className="value num">{fmtInt(diff.counts.grew)}</div></div>
+                <div className="tile"><div className="label">Shrank</div><div className="value num">{fmtInt(diff.counts.shrank)}</div></div>
+              </div>
+              <p className="since">
+                Since <span title={new Date(base.takenAt).toLocaleString()}>{new Date(base.takenAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span> ({timeAgo(base.takenAt)}): holders <span className="num">{fmtInt(diff.holdersBefore)}</span> to <span className="num">{fmtInt(diff.holdersAfter)}</span>{' '}
+                <span className={`delta num ${diff.holdersAfter >= diff.holdersBefore ? 'up' : 'down'}`}>({diff.holdersAfter >= diff.holdersBefore ? '+' : '−'}{fmtInt(Math.abs(diff.holdersAfter - diff.holdersBefore))})</span>, {nft ? 'pieces held' : 'held by them'} <span className="num">{amount(diff.heldBefore)}</span> to <span className="num">{amount(diff.heldAfter)}</span>. The filters apply to both snapshots.
+              </p>
+              {filters}
+              <div className="seg groups" role="group" aria-label="Which changes">
+                {GROUPS.map(([g, label]) => (
+                  <button key={g} aria-pressed={group === g} onClick={() => (setGroup(g), setShown(PAGE))}>
+                    {label} <span className="num muted">{fmtInt(g === 'all' ? diff.rows.length : diff.counts[g])}</span>
+                  </button>
+                ))}
+              </div>
+              <hr className="hr" />
+              <div className="row between" style={{ marginBottom: '0.6rem' }}>
+                <label className="search">
+                  <IconSearch />
+                  <input className="input mono" placeholder="Find an address or name" value={search} onChange={(e) => (setSearch(e.target.value), setShown(PAGE))} spellCheck={false} />
+                </label>
+                <span className="muted small num">{fmtInt(diffTable.length)} of {fmtInt(diffRows.length)}</span>
+              </div>
+              {diff.rows.length === 0 ? (
+                <p className="muted">Nothing changed between the two snapshots.</p>
+              ) : (
+                <div className="tablewrap">
+                  <table>
+                    <thead>
+                      <tr><th>#</th><th>Owner</th><th className="right">Before</th><th className="right">After</th><th className="right">Change</th><th /></tr>
+                    </thead>
+                    <tbody>
+                      {diffTable.slice(0, shown).map((r, i) => (
+                        <tr key={r.owner}>
+                          <td className="muted num">{i + 1}</td>
+                          <td><Addr addr={r.owner} name={names.get(r.owner)} /></td>
+                          <td className="right num muted">{amount(r.before)}</td>
+                          <td className="right num">{amount(r.after)}</td>
+                          <td className={`right delta ${r.delta < 0n ? 'down' : 'up'}`}>{fmtDelta(r.delta, amount)}</td>
+                          <td className="right">{(r.change === 'joined' || r.change === 'left') && <span className="pill">{r.change}</span>}{r.isProgram && <span className="pill">program</span>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {diffTable.length > shown && (
+                <button className="btn quiet" style={{ marginTop: '0.5rem' }} onClick={() => setShown((n) => n + 100)}>
+                  <IconChevronDown /> Show {fmtInt(Math.min(100, diffTable.length - shown))} more
+                </button>
+              )}
+            </>
+          ) : (
+            <>
           <div className="tiles" style={{ marginTop: '1rem' }}>
             <div className="tile"><div className="label">Holders</div><div className="value num">{fmtInt(view.rows.length)}</div></div>
             <div className="tile"><div className="label">{nft ? 'Pieces held' : 'Held by them'}</div><div className="value num">{nft ? fmtInt(Number(view.held)) : fmtAmount(view.held, result.token.decimals, true)}</div></div>
@@ -352,13 +546,7 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
             </div>
           </div>
 
-          <div className="row" style={{ margin: '0.9rem 0' }}>
-            <label className="check"><input type="checkbox" checked={hideProgram} onChange={(e) => setHideProgram(e.target.checked)} /> Hide program accounts (pools, vaults, escrows)</label>
-            <label className="field" style={{ gridTemplateColumns: 'auto 120px', display: 'grid', alignItems: 'center', gap: '0.5rem' }}>
-              <span>{nft ? 'Min pieces' : 'Min balance'}</span>
-              <input className="input num" inputMode="decimal" value={minUi} onChange={(e) => setMinUi(e.target.value)} placeholder="0" />
-            </label>
-          </div>
+          {filters}
 
           <HolderChart holders={view.rows} total={view.held} decimals={result.token.decimals} symbol={result.token.symbol} names={names} />
 
@@ -395,6 +583,8 @@ export function Snapshot({ result, onResult, onAirdrop, presetMint, onPresetUsed
           )}
           {shown > PAGE && table.length > PAGE && (
             <button className="btn quiet" style={{ marginTop: '0.5rem' }} onClick={() => setShown(PAGE)}><IconCheck /> Back to top 25</button>
+          )}
+            </>
           )}
         </section>
       )}

@@ -1,16 +1,10 @@
 import { Suspense, lazy, useCallback, useEffect, useState, type ReactNode } from 'react'
 import { WalletButton } from './components/WalletButton'
 import { Snapshot, type SnapshotResult } from './components/Snapshot'
-import { Airdrop } from './components/Airdrop'
-import { Cleanup } from './components/Cleanup'
 import { StatStrip } from './components/StatStrip'
 import { Toaster } from './components/Toast'
 import { Roadmap } from './components/Roadmap'
 import { Changelog } from './components/Changelog'
-import { Clicker } from './components/Clicker'
-import { Crumb } from './components/Crumb'
-import { Mint } from './components/Mint'
-import { Swap } from './components/Swap'
 import { useInstallPrompt } from './lib/install'
 import { webglOk } from './lib/webgl'
 import { loadSnapshot, saveSnapshot } from './lib/history'
@@ -19,6 +13,28 @@ import { IconAperture, IconBrush, IconCoins, IconCookie, IconDownload, IconLink,
 
 const HeroScene = lazy(() => import('./components/HeroScene'))
 const WIDE = '(min-width: 900px)'
+
+// Every tab but Snapshot loads its code when first opened, so the first paint carries only the
+// landing tab; the rest is fetched once the page is idle, so a tab click still lands at once.
+const TAB_CODE = {
+  airdrop: () => import('./components/Airdrop'),
+  cleanup: () => import('./components/Cleanup'),
+  swap: () => import('./components/Swap'),
+  clicker: () => import('./components/Clicker'),
+  crumb: () => import('./components/Crumb'),
+  mint: () => import('./components/Mint'),
+}
+const Airdrop = lazy(() => TAB_CODE.airdrop().then((m) => ({ default: m.Airdrop })))
+const Cleanup = lazy(() => TAB_CODE.cleanup().then((m) => ({ default: m.Cleanup })))
+const Swap = lazy(() => TAB_CODE.swap().then((m) => ({ default: m.Swap })))
+const Clicker = lazy(() => TAB_CODE.clicker().then((m) => ({ default: m.Clicker })))
+const Crumb = lazy(() => TAB_CODE.crumb().then((m) => ({ default: m.Crumb })))
+const Mint = lazy(() => TAB_CODE.mint().then((m) => ({ default: m.Mint })))
+const loading = (
+  <section className="card">
+    <p className="muted">Loading…</p>
+  </section>
+)
 
 const TABS: { id: Tab; label: string; icon: typeof IconAperture }[] = [
   { id: 'snapshot', label: 'Snapshot', icon: IconAperture },
@@ -66,6 +82,12 @@ export default function App() {
   useEffect(() => {
     document.title = page === 'changelog' ? 'Changelog · Crumbs' : 'Crumbs'
   }, [page])
+  useEffect(() => {
+    const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1500))
+    const cancel = window.cancelIdleCallback ?? window.clearTimeout
+    const id = idle(() => Object.values(TAB_CODE).forEach((load) => void load().catch(() => {})))
+    return () => cancel(id)
+  }, [])
   const setTab = useCallback(
     (t: Tab) => {
       show(t)
@@ -86,7 +108,9 @@ export default function App() {
   const panel = (id: Tab, node: ReactNode) =>
     visited.has(id) && (
       <div className="panel" key={id} hidden={tab !== id} role="tabpanel">
-        <TabActiveContext.Provider value={tab === id && !page}>{node}</TabActiveContext.Provider>
+        <TabActiveContext.Provider value={tab === id && !page}>
+          <Suspense fallback={loading}>{node}</Suspense>
+        </TabActiveContext.Provider>
       </div>
     )
 

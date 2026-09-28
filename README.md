@@ -8,7 +8,7 @@ Live: https://crumbs-cookie.vercel.app/ (mirror: https://wolfurx.github.io/crumb
 
 ## What it does
 
-**Snapshot.** Type a token symbol or mint and get every holder from the Cookiescan DAS index, folded by owner (a wallet with several token accounts counts once). Paste an NFT collection instead and get every wallet holding its pieces with the count each holds, read from the chain itself: the pieces from Token Metadata, their owners from the token accounts; a finished Mint NFT drop links straight to it. Program-owned accounts such as pools, vaults and escrows are flagged and hidden by default so a snapshot means people, not liquidity. You get holder count, a concentration bar (largest holder, top 10, top 50, everyone else), a top-10 chart, a sortable and searchable table, a CSV export, and a share card: a 1200x630 image of the distribution for X or Telegram, rendered in your browser.
+**Snapshot.** Type a token symbol or mint and get every holder from the Cookiescan DAS index, folded by owner (a wallet with several token accounts counts once). Paste an NFT collection instead and get every wallet holding its pieces with the count each holds, read from the chain itself: the pieces from Token Metadata, their owners from the token accounts; a finished Mint NFT drop links straight to it. Program-owned accounts such as pools, vaults and escrows are flagged and hidden by default so a snapshot means people, not liquidity. You get holder count, a concentration bar (largest holder, top 10, top 50, everyone else), a top-10 chart, a sortable and searchable table, a CSV export, and a share card: a 1200x630 image of the distribution for X or Telegram, rendered in your browser. Every snapshot is kept on your device (the last eight per token), so a later snapshot of the same token can be compared with any earlier one: who joined, who left, whose balance grew or shrank, under the same filters, with a CSV of the changes and a share card of its own. Export a snapshot as a file and import it later, in this browser or another, to compare across months.
 
 ![Share card](docs/share-card.png)
 
@@ -30,7 +30,7 @@ Live: https://crumbs-cookie.vercel.app/ (mirror: https://wolfurx.github.io/crumb
 
 **CRUMB.** Proof of play. 100,000,000 max supply, 6 decimals, minted only by registered games through the emission program, 100,000 a day while the first half is minted and halving every time minted supply crosses the halfway mark of what remains. No treasury, no premine, no price anywhere in the app. Holders benefit when the ecosystem decides they should: partner drops, allowlists and votes counted from a CRUMB holder snapshot taken here. Mint `54jTjjds4jezFZvJKnMRAsdrQ2fQ6yLHts356pGXn9g`.
 
-**And around them.** A live line of chain stats under the hero (slot, epoch, throughput, COOK price, tokens indexed), an install button when the browser offers one, and a link preview card for every share. The tab is in the URL (`#airdrop`, `#mint`), so reload, back and links land where you were. Tabs keep what you were doing when you look at another one. The last snapshot, the recent airdrops with their signatures, and a signed swap offer are remembered on the device, nowhere else.
+**And around them.** A live line of chain stats under the hero (slot, epoch, throughput, COOK price, tokens indexed), an install button when the browser offers one, and a link preview card for every share. The tab is in the URL (`#airdrop`, `#mint`), so reload, back and links land where you were. Tabs keep what you were doing when you look at another one. The last snapshots, the recent airdrops with their signatures, and a signed swap offer are remembered on the device, nowhere else. The first load carries the Snapshot tab only; the other tabs are fetched while you read and cached by the service worker.
 
 ## Using it
 
@@ -82,6 +82,7 @@ The site shows the same list. Suggestions go in the issues or as replies to the 
 
 The site has the full list at https://crumbs-cookie.vercel.app/#changelog (footer link). In short:
 
+- **2026-09-28** Snapshot changes: compare a snapshot with an earlier one, joined, left, grew, shrank, CSV and share card; export and import snapshot files. Lighter first load: tabs other than Snapshot load on demand.
 - **2026-09-26** NFT airdrops: pick a collection you hold and each recipient gets one piece until the pieces run out. Creator verification and a share card on the Mint NFT done screen.
 - **2026-09-23** NFT holder snapshots: paste a collection, get every wallet holding its pieces, read from the chain; a finished Mint NFT drop links to it. The bakers you own stand around the clicker cookie.
 - **2026-09-16** Quality of life: tabs keep their state and live in the URL, the last snapshot survives a reload, airdrop exclude list and history, copy addresses and retake on the snapshot, the maker's swap offer persists with its status.
