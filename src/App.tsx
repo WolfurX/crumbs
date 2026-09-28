@@ -3,7 +3,6 @@ import { WalletButton } from './components/WalletButton'
 import { Snapshot, type SnapshotResult } from './components/Snapshot'
 import { StatStrip } from './components/StatStrip'
 import { Toaster } from './components/Toast'
-import { Roadmap } from './components/Roadmap'
 import { Changelog } from './components/Changelog'
 import { useInstallPrompt } from './lib/install'
 import { webglOk } from './lib/webgl'
@@ -162,7 +161,6 @@ export default function App() {
       {panel('crumb', <Crumb onSnapshot={snapshotOf} />)}
       {panel('mint', <Mint snapshot={snapshot} onNeedSnapshot={() => setTab('snapshot')} onSnapshot={snapshotOf} />)}
 
-      <Roadmap />
       </div>
 
       <footer>

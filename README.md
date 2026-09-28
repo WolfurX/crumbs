@@ -70,14 +70,6 @@ npm run preview
 
 Deployed from `main` to Vercel (production) and, as a mirror, to GitHub Pages by Actions. The base path follows the host: `/` on Vercel, `/crumbs/` on Pages.
 
-## Roadmap
-
-Crumbs is meant to be the toolbox every Cookie Chain community reaches for. Next in line:
-
-- Open swap offers anyone can take, which needs a small escrow program.
-
-The site shows the same list. Suggestions go in the issues or as replies to the launch thread.
-
 ## Changelog
 
 The site has the full list at https://crumbs-cookie.vercel.app/#changelog (footer link). In short:
