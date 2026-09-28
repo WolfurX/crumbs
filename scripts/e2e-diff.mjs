@@ -132,7 +132,13 @@ await sleep(300)
 const t2 = await tiles()
 check(`comparing with the previous take shows no change (${t2.join(' ')})`, t2.join(' ') === 'Joined=0 Left=0 Grew=0 Shrank=0' && (await $(`document.body.textContent.includes('Nothing changed between the two snapshots.')`)))
 
-// 8. a file for another token is refused
+// 8. a snapshot stored before snapshots were kept (only `crumbs.snapshot`, no list) joins the list on load
+await $(`localStorage.removeItem('crumbs.snapshots'); Object.keys(localStorage).filter((k) => k.startsWith('crumbs.snapshot.')).forEach((k) => localStorage.removeItem(k)); window.__beforeReload = true`)
+await cdp.send('Page.reload')
+await cdp.waitFor(`!window.__beforeReload && document.querySelectorAll('.tile').length >= 4`, 30000)
+check('an old-style stored snapshot is kept on load', await $(`(() => { const l = JSON.parse(localStorage.getItem('crumbs.snapshots') || '[]'); const s = JSON.parse(localStorage.getItem('crumbs.snapshot')); return l.length === 1 && l[0].id === String(s.takenAt) && !!localStorage.getItem('crumbs.snapshot.' + l[0].id) })()`))
+
+// 9. a file for another token is refused
 const other = { ...current, token: { ...current.token, mint: 'So11111111111111111111111111111111111111112', symbol: 'wCOOK' } }
 const otherFile = path.join(downloads, 'other.json')
 fs.writeFileSync(otherFile, JSON.stringify(other))
@@ -142,7 +148,7 @@ await cdp.send('DOM.setFileInputFiles', { files: [otherFile], nodeId: input2.nod
 await sleep(500)
 check('a snapshot of another token is refused with its symbol', await $(`document.querySelector('.panel:not([hidden]) .err')?.textContent.includes('wCOOK snapshot')`))
 
-// 9. phone width
+// 10. phone width
 await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true })
 await sleep(300)
 check('no horizontal overflow at 390px', await $(`document.documentElement.scrollWidth <= 390`))

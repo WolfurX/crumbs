@@ -78,7 +78,10 @@ export function saveSnapshot(s: StoredSnapshot) {
 export function loadSnapshot(): StoredSnapshot | null {
   try {
     const raw = localStorage.getItem(SNAPSHOT_KEY)
-    return raw ? unpack(JSON.parse(raw)) : null
+    const s = raw ? unpack(JSON.parse(raw)) : null
+    // a snapshot stored before snapshots were kept joins the list, so the first retake has something to compare with
+    if (s && raw && !listSaved().some((x) => x.id === String(s.takenAt))) keepSnapshot(s, raw)
+    return s
   } catch {
     return null
   }
